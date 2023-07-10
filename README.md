@@ -27,13 +27,13 @@
 
     $ cd {PROJECT_DIR}/build/server
 
-    $ ./server <PORT>
+    $ ./server {PORT}
 
   * client
 
     $ cd {PROJECT_DIR}/build/client
 
-    $ ./client <SERVER_IP> <PORR>
+    $ ./client {SERVER_IP} {PORT}
 
 
 ## TODO
