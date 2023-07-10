@@ -16,20 +16,20 @@ enum class ClientState
 class ChatClient
 {
 public:
-    ChatClient(const std::string &serverIP, const int &port);
+    ChatClient(const std::string &server_ip, const int &port_);
     bool connectToServer();
     void start();
-    // void stop();
 
 private:
     void recvMessages();
     void sendMessage();
-    void handleError(const std::string &errorMessage);
+    void handleError(const std::string &error_message);
+    sockaddr_in server_addr_{};
 
-    std::string serverIP;
-    int port;
-    int serverSocket;
-    bool isRunning;
-    std::thread recvThread;
-    std::thread sendThread;
+    std::string server_ip_;
+    int port_;
+    int server_socket_ = 0;
+    bool is_running_ = false;
+    std::thread recv_thread_;
+    std::thread send_thread_;
 };

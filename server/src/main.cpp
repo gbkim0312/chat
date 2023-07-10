@@ -21,20 +21,18 @@ int main(int argc, char *argv[])
         if (serverState == ServerState::ERROR)
         {
             errorCount++;
-            fmt::print("Server got error. Restarting...({} / 5)\n", errorCount);
-            if (errorCount == 5)
+            fmt::print("Server got error. Restarting...({} / 10)\n", errorCount);
+            std::this_thread::sleep_for(std::chrono::seconds(6));
+            if (errorCount == 10)
             {
                 serverState = ServerState::STOP;
+                // continue;
             }
-            continue;
         }
-        else if (serverState == ServerState::STOP)
+        if (serverState == ServerState::STOP)
         {
             fmt::print("Server stopped.\n");
             break;
-        }
-        else
-        {
         }
     }
 

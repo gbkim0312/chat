@@ -9,14 +9,14 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    std::string serverIP = argv[1]; // 서버 IP 주소
-    int port = std::stoi(argv[2]);  // 서버 포트 번호
+    std::string server_ip = argv[1]; // 서버 IP 주소
+    int port = std::stoi(argv[2]);   // 서버 포트 번호
 
-    ChatClient client(serverIP, port);
+    ChatClient client(server_ip, port);
 
     if (!client.connectToServer())
     {
-        std::cerr << "Failed to connect to the server" << std::endl;
+        fmt::print("Failed to connect to the server\n");
         return 1;
     }
 
