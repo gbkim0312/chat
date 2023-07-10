@@ -72,53 +72,9 @@ public:
 
     ServerState start()
     {
+        server_state_ = ServerState::RUNNING;
+
         // create the server socket
-        server_state_ = createServerSocket();
-
-        if (server_state_ == ServerState::ERROR)
-        {
-            return server_state_;
-        }
-
-        // is_running_ = true;
-        fmt::print("Server started. Listening on port {} \n", port_);
-
-        while (server_state_ == ServerState::RUNNING)
-        {
-            // accept clients
-
-            int client_socket = accept(server_socket_, nullptr, nullptr);
-            if (client_socket < 0)
-            {
-                handleError("Failed to accept client connection");
-                continue;
-            }
-
-            fmt::print("Client connected. Socket FD: {} \n", client_socket);
-
-            // push_back the client socket to clientSockets.
-            client_sockets_.push_back(client_socket);
-
-            // start clientHandler thread
-            std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket);
-            client_thread.detach(); // 스레드를 분리해서 백그라운드에서 실행
-        }
-
-        // is_running_ = false;
-        return ServerState::STOP;
-    }
-
-private:
-    sockaddr_in server_addr_{};
-    int port_ = 0;
-    int server_socket_ = 0;
-    std::vector<int> client_sockets_;
-    bool is_running_ = false;
-    std::mutex client_mutex_;
-    ServerState server_state_ = ServerState::STOP;
-
-    ServerState createServerSocket()
-    {
         server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
         if (server_socket_ < 0)
         {
@@ -145,7 +101,44 @@ private:
             return ServerState::ERROR;
         }
 
-        return ServerState::RUNNING;
+        is_running_ = true;
+        fmt::print("Server started. Listening on port {} \n", port_);
+
+        while (is_running_)
+        {
+            // accept clients
+            int client_socket = accept(server_socket_, nullptr, nullptr);
+            if (client_socket < 0)
+            {
+                handleError("Failed to accept client connection");
+                continue;
+            }
+
+            fmt::print("Client connected. Socket FD: {} \n", client_socket);
+
+            // push_back the client socket to clientSockets.
+            client_sockets_.push_back(client_socket);
+
+            // start clientHandler thread
+            std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket);
+            client_thread.detach(); // 스레드를 분리해서 백그라운드에서 실행
+        }
+
+        is_running_ = false;
+        return ServerState::STOP;
+    }
+
+private:
+    sockaddr_in server_addr_{};
+    int port_ = 0;
+    int server_socket_ = 0;
+    std::vector<int> client_sockets_;
+    bool is_running_ = false;
+    std::mutex client_mutex_;
+    ServerState server_state_ = ServerState::STOP;
+
+    void setServerSocket()
+    {
     }
 };
 
