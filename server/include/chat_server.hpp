@@ -31,4 +31,5 @@ private:
     int serverSocket;
     std::vector<int> clientSockets;
     bool isRunning;
+    std::mutex clientMutex;
 };

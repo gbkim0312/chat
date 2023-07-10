@@ -90,7 +90,7 @@ void ChatServer::handleClient(const int &clientSocket)
     close(clientSocket);
 
     // remove the clientSocket.
-    // TODO: need to add mutex
+    std::lock_guard<std::mutex> lock_guard(clientMutex);
     clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
 }
 
