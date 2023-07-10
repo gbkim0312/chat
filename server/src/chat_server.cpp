@@ -14,62 +14,6 @@ class ChatServer::ChatServerImpl
 public:
     ChatServerImpl(const int &port) : port_(port) {}
 
-    void handleClient(const int &client_socket)
-    {
-
-        // create buffer for message and clear it
-        char buffer[1024];
-        memset(buffer, 0, sizeof(buffer));
-
-        // receive messages
-        while (is_running_)
-        {
-            ssize_t bytesRecv = recv(client_socket, buffer, sizeof(buffer), 0);
-            if (bytesRecv < 0)
-            {
-                handleError("Failed to receive message from the client");
-                break;
-            }
-            else if (bytesRecv == 0)
-            {
-                fmt::print("Client disconnected. Socket FD: {}", client_socket);
-                break;
-            }
-            else
-            {
-                broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, client_socket);
-            }
-            memset(buffer, 0, sizeof(buffer));
-        }
-
-        close(client_socket);
-
-        // remove the clientSocket.
-        std::lock_guard<std::mutex> lock_guard(client_mutex_);
-        client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
-    }
-
-    void broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket)
-    {
-        for (int client_socket : client_sockets_)
-        {
-            if (client_socket != sender_socket)
-            {
-                ssize_t sendBytes = send(client_socket, message.c_str(), message_size, 0);
-                if (sendBytes < 0)
-                {
-                    handleError("Failed to send message to clients");
-                }
-            }
-        }
-    }
-
-    void handleError(const std::string &error_message)
-    {
-        fmt::print("runtime error: {}\n", error_message);
-        // throw std::runtime_error(errorMessage);
-    }
-
     ServerState start()
     {
         server_state_ = ServerState::RUNNING;
@@ -128,6 +72,59 @@ public:
         return ServerState::STOP;
     }
 
+    void handleClient(const int &client_socket)
+    {
+        char buffer[1024];
+        memset(buffer, 0, sizeof(buffer));
+
+        while (is_running_)
+        {
+            ssize_t bytesRecv = recv(client_socket, buffer, sizeof(buffer), 0);
+            if (bytesRecv < 0)
+            {
+                handleError("Failed to receive message from the client");
+                break;
+            }
+            else if (bytesRecv == 0)
+            {
+                fmt::print("Client disconnected. Socket FD: {}", client_socket);
+                break;
+            }
+            else
+            {
+                broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, client_socket);
+            }
+            memset(buffer, 0, sizeof(buffer));
+        }
+
+        close(client_socket);
+
+        // remove the clientSocket.
+        std::lock_guard<std::mutex> lock_guard(client_mutex_);
+        client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
+    }
+
+    void broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket)
+    {
+        for (int client_socket : client_sockets_)
+        {
+            if (client_socket != sender_socket)
+            {
+                ssize_t sendBytes = send(client_socket, message.c_str(), message_size, 0);
+                if (sendBytes < 0)
+                {
+                    handleError("Failed to send message to clients");
+                }
+            }
+        }
+    }
+
+    void handleError(const std::string &error_message)
+    {
+        fmt::print("runtime error: {}\n", error_message);
+        // throw std::runtime_error(errorMessage);
+    }
+
 private:
     sockaddr_in server_addr_{};
     int port_ = 0;
@@ -136,10 +133,6 @@ private:
     bool is_running_ = false;
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
-
-    void setServerSocket()
-    {
-    }
 };
 
 ChatServer::ChatServer(const int &port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}

@@ -16,22 +16,23 @@ int main(int argc, char *argv[])
     uint8_t errorCount = 0;
 
     // start server
-    while (true)
-    {
-        ServerState serverState = chatServer.start();
+    ServerState server_state = ServerState::RUNNING;
 
-        if (serverState == ServerState::ERROR)
+    while (server_state == ServerState::RUNNING)
+    {
+        server_state = chatServer.start();
+        if (server_state == ServerState::ERROR)
         {
             errorCount++;
             fmt::print("Server got error. Restarting...({} / 10)\n", errorCount);
             std::this_thread::sleep_for(std::chrono::seconds(6));
             if (errorCount == 10)
             {
-                serverState = ServerState::STOP;
+                server_state = ServerState::STOP;
                 // continue;
             }
         }
-        if (serverState == ServerState::STOP)
+        if (server_state == ServerState::STOP)
         {
             fmt::print("Server stopped.\n");
             break;
