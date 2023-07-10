@@ -3,6 +3,7 @@
 ## Prerequisite
 
 * CMake (version 3.10 or later)
+* SPDLOG
 
 ## How to compile
 
