@@ -1,75 +1,74 @@
 #include "chat_server.hpp"
 #include "spdlog/fmt/fmt.h"
 
-ChatServer::ChatServer(const int &port) : port(port), serverSocket(0), isRunning(false) {}
+ChatServer::ChatServer(const int &port) : port_(port) {}
 
 ServerState ChatServer::start()
 {
     // create the server socket
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket < 0)
+    server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket_ < 0)
     {
         handleError("Fail to create the server socket");
         return ServerState::ERROR;
     };
 
     // set the address of the socket
-    sockaddr_in serverAddress{};
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-    serverAddress.sin_port = htons(port);
+    server_addr_.sin_family = AF_INET;
+    server_addr_.sin_addr.s_addr = INADDR_ANY;
+    server_addr_.sin_port = htons(port_);
 
     // binding the socket and the address
-    if (bind(serverSocket, reinterpret_cast<sockaddr *>(&serverAddress), sizeof(serverAddress)) == -1)
+    if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
     {
         handleError("Failed to bind socket");
         return ServerState::ERROR;
     }
 
     // listen clients
-    if (listen(serverSocket, 1) == -1)
+    if (listen(server_socket_, 1) == -1)
     {
         handleError("Fail to listen for connection");
         return ServerState::ERROR;
     }
 
-    isRunning = true;
-    fmt::print("Server started. Listening on port {} \n", port);
+    is_running_ = true;
+    fmt::print("Server started. Listening on port {} \n", port_);
 
-    while (isRunning)
+    while (is_running_)
     {
         // accept clients
-        int clientSocket = accept(serverSocket, nullptr, nullptr);
-        if (clientSocket < 0)
+        int clinet_socket = accept(server_socket_, nullptr, nullptr);
+        if (clinet_socket < 0)
         {
             handleError("Failed to accept clinet connection");
             continue;
         }
 
-        fmt::print("Client connected. Socket FD: {} \n", clientSocket);
+        fmt::print("Client connected. Socket FD: {} \n", clinet_socket);
 
         // push_back the client socket to clientSockets.
-        clientSockets.push_back(clientSocket);
+        client_sockets_.push_back(clinet_socket);
 
         // start clientHandler thread
-        std::thread clientThread(&ChatServer::handleClient, this, clientSocket);
-        clientThread.detach(); // 스레드를 분리해서 백그라운드에서 실행
+        std::thread client_thread(&ChatServer::handleClient, this, clinet_socket);
+        client_thread.detach(); // 스레드를 분리해서 백그라운드에서 실행
     }
 
-    isRunning = false;
+    is_running_ = false;
     return ServerState::STOP;
 }
 
-void ChatServer::handleClient(const int &clientSocket)
+void ChatServer::handleClient(const int &clinet_socket)
 {
     // create buffer for message and clear it
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
 
     // receive messages
-    while (isRunning)
+    while (is_running_)
     {
-        ssize_t bytesRecv = recv(clientSocket, buffer, sizeof(buffer), 0);
+        ssize_t bytesRecv = recv(clinet_socket, buffer, sizeof(buffer), 0);
         if (bytesRecv < 0)
         {
             handleError("Failed to receive message from the client");
@@ -77,30 +76,30 @@ void ChatServer::handleClient(const int &clientSocket)
         }
         else if (bytesRecv == 0)
         {
-            fmt::print("Client disconnected. Socket FD: {}", clientSocket);
+            fmt::print("Client disconnected. Socket FD: {}", clinet_socket);
             break;
         }
         else
         {
-            broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, clientSocket);
+            broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, clinet_socket);
         }
         memset(buffer, 0, sizeof(buffer));
     }
 
-    close(clientSocket);
+    close(clinet_socket);
 
     // remove the clientSocket.
-    std::lock_guard<std::mutex> lock_guard(clientMutex);
-    clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
+    std::lock_guard<std::mutex> lock_guard(client_mutex_);
+    client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_sockets_), client_sockets_.end());
 }
 
-void ChatServer::broadcastMessage(const std::string &message, const ssize_t &messageSize, const int &senderSocket)
+void ChatServer::broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket)
 {
-    for (int clientSocket : clientSockets)
+    for (int client_socket : client_sockets_)
     {
-        if (clientSocket != senderSocket)
+        if (client_socket != sender_socket)
         {
-            ssize_t sendBytes = send(clientSocket, message.c_str(), messageSize, 0);
+            ssize_t sendBytes = send(client_socket, message.c_str(), message_size, 0);
             if (sendBytes < 0)
             {
                 handleError("Failed to send message to clients");
@@ -109,8 +108,8 @@ void ChatServer::broadcastMessage(const std::string &message, const ssize_t &mes
     }
 }
 
-void ChatServer::handleError(const std::string &errorMessage)
+void ChatServer::handleError(const std::string &error_message)
 {
-    fmt::print("runtime error: {}\n", errorMessage);
-    throw std::runtime_error(errorMessage);
+    fmt::print("runtime error: {}\n", error_message);
+    // throw std::runtime_error(errorMessage);
 }

@@ -20,16 +20,16 @@ class ChatServer
 public:
     ChatServer(const int &port);
     ServerState start();
-    // void stop();
 
 private:
-    void handleClient(const int &clientSocket);
-    void broadcastMessage(const std::string &message, const ssize_t &messageSize, const int &senderSocket);
-    void handleError(const std::string &errorMessage);
+    void handleClient(const int &client_socket);
+    void broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket);
+    void handleError(const std::string &error_message);
 
-    int port;
-    int serverSocket;
-    std::vector<int> clientSockets;
-    bool isRunning;
-    std::mutex clientMutex;
+    sockaddr_in server_addr_{};
+    int port_ = 0;
+    int server_socket_ = 0;
+    std::vector<int> client_sockets_;
+    bool is_running_ = false;
+    std::mutex client_mutex_;
 };
