@@ -11,11 +11,12 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    std::string server_ip = argv[2];   // 서버 IP 주소
-    int32_t port = std::stoi(argv[3]); // 서버 포트 번호
+    std::string username = argv[1];
+    std::string server_ip = argv[2];
+    int32_t port = std::stoi(argv[3]);
     uint8_t error_counts = 0;
 
-    ChatClient client(server_ip, port);
+    ChatClient client(server_ip, port, username);
 
     while (!client.connectToServer())
     {

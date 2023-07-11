@@ -15,7 +15,6 @@ struct client
     std::string username;
     int client_socket;
 };
-
 class ChatServer::ChatServerImpl
 {
 public:
@@ -67,7 +66,18 @@ public:
                 continue;
             }
 
-            fmt::print("Client connected. Socket FD: {} \n", client_socket);
+            // get username from the client
+            char buffer[1024] = "";
+            auto bytes_recv = recv(client_socket, buffer, sizeof(buffer), 0);
+            if (bytes_recv == -1)
+            {
+                handleError("Failed to send message");
+            }
+
+            std::string username = std::string(buffer, sizeof(buffer));
+            memset(buffer, 0, sizeof(buffer));
+
+            fmt::print("Client connected. Socket FD: {} | username: {} \n", client_socket, username);
 
             // push_back the client socket to clientSockets.
             client_sockets_.push_back(client_socket);
@@ -89,19 +99,18 @@ public:
 
         while (server_state_ == ServerState::RUNNING)
         {
-            auto bytesRecv = recv(client_socket, buffer, sizeof(buffer), 0);
-            if (bytesRecv < 0)
+            auto bytes_recv = recv(client_socket, buffer, sizeof(buffer), 0);
+            if (bytes_recv < 0)
             {
                 handleError("Failed to receive message from the client");
                 break;
             }
-            else if (bytesRecv == 0)
+            else if (bytes_recv == 0)
             {
                 fmt::print("Client disconnected. Socket FD: {}", client_socket);
                 break;
             }
-
-            broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, client_socket);
+            broadcastMessage(std::string(buffer, bytes_recv), bytes_recv, client_socket);
             memset(buffer, 0, sizeof(buffer));
         }
 

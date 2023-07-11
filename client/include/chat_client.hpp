@@ -14,7 +14,7 @@ enum class ClientState
 class ChatClient
 {
 public:
-    ChatClient(const std::string &server_ip, const int &port);
+    ChatClient(const std::string &server_ip, int port, const std::string &username);
     ~ChatClient();
     bool connectToServer();
     void start();
