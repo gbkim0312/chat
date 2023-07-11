@@ -1,3 +1,5 @@
+#include <thread>
+#include <chrono>
 #include "chat_server.hpp"
 #include "spdlog/fmt/fmt.h"
 
@@ -10,30 +12,37 @@ int main(int argc, char *argv[])
     }
 
     int port = atoi(argv[1]);
-    ChatServer chatServer(port);
-    uint8_t errorCount = 0;
+    ChatServer chat_server(port);
+    ServerState server_state;
+    int errorCounts = 0;
 
-    // start server
     while (true)
     {
-        ServerState serverState = chatServer.start();
+        // Start server
+        chat_server.start();
+        server_state = chat_server.getState();
 
-        if (serverState == ServerState::ERROR)
+        if (server_state == ServerState::ERROR)
         {
-            errorCount++;
-            fmt::print("Server got error. Restarting...({} / 10)\n", errorCount);
-            std::this_thread::sleep_for(std::chrono::seconds(6));
-            if (errorCount == 10)
+            errorCounts++;
+            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", errorCounts);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            if (errorCounts > 9)
             {
-                serverState = ServerState::STOP;
-                // continue;
+                break;
             }
+            continue;
         }
-        if (serverState == ServerState::STOP)
-        {
-            fmt::print("Server stopped.\n");
-            break;
-        }
+    }
+
+    if (server_state == ServerState::ERROR)
+    {
+        fmt::print("Can not start server. try later. \n");
+        chat_server.stop();
+    }
+    else if (server_state == ServerState::STOP)
+    {
+        fmt::print("Server stopped. \n");
     }
 
     return 0;

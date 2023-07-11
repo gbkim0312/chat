@@ -4,7 +4,7 @@ add_executable(client
 )
 
 target_include_directories(client PRIVATE include)
-target_compile_features(client PRIVATE cxx_std_11)
+target_compile_features(client PRIVATE cxx_std_14)
 
 find_package(spdlog REQUIRED)
 target_link_libraries(client PRIVATE spdlog::spdlog)

@@ -4,7 +4,7 @@ add_executable(server
 )
 
 target_include_directories(server PRIVATE include)
-target_compile_features(server PRIVATE cxx_std_11)
+target_compile_features(server PRIVATE cxx_std_14)
 
 find_package(spdlog REQUIRED)
 target_link_libraries(server PRIVATE spdlog::spdlog)
