@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define BUFFER_SIZE 1024
+
 struct client
 {
     uint16_t client_id;
@@ -67,16 +69,7 @@ public:
             }
 
             // get username from the client
-            char buffer[1024] = "";
-            auto bytes_recv = recv(client_socket, buffer, sizeof(buffer), 0);
-            if (bytes_recv == -1)
-            {
-                handleError("Failed to send message");
-            }
-
-            std::string username = std::string(buffer, sizeof(buffer));
-            memset(buffer, 0, sizeof(buffer));
-
+            std::string username = getClientUserName(client_socket);
             fmt::print("Client connected. Socket FD: {} | username: {} \n", client_socket, username);
 
             // push_back the client socket to clientSockets.
@@ -87,19 +80,18 @@ public:
             client_thread.detach();
             client_threads_.push_back(std::move(client_thread));
         }
-
-        // exit(-1);
-        // server_state_ = ServerState::STOP;
     }
 
     void handleClient(const int &client_socket)
     {
-        char buffer[1024];
-        memset(buffer, 0, sizeof(buffer));
+        // char buffer[1024];
+        std::lock_guard<std::mutex> lock_guard(buffer_mutex_);
+        memset(buffer, 0, BUFFER_SIZE);
 
         while (server_state_ == ServerState::RUNNING)
         {
-            auto bytes_recv = recv(client_socket, buffer, sizeof(buffer), 0);
+            std::lock_guard<std::mutex> lock_guard(buffer_mutex_);
+            auto bytes_recv = recv(client_socket, buffer, BUFFER_SIZE, 0);
             if (bytes_recv < 0)
             {
                 handleError("Failed to receive message from the client");
@@ -111,7 +103,9 @@ public:
                 break;
             }
             broadcastMessage(std::string(buffer, bytes_recv), bytes_recv, client_socket);
-            memset(buffer, 0, sizeof(buffer));
+
+            std::lock_guard<std::mutex> lock_guard(buffer_mutex_);
+            memset(buffer, 0, BUFFER_SIZE);
         }
 
         close(client_socket);
@@ -176,6 +170,26 @@ public:
         client_sockets_.clear();
     }
 
+    std::string getClientUserName(int client_socket)
+    {
+        // char buffer[1024] = "";
+        std::lock_guard<std::mutex> lock_guard(buffer_mutex_);
+        memset(buffer, 0, BUFFER_SIZE);
+
+        auto bytes_recv = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (bytes_recv == -1)
+        {
+            handleError("Failed to send message");
+        }
+
+        std::string username = std::string(buffer, BUFFER_SIZE);
+
+        std::lock_guard<std::mutex> lock_guard(buffer_mutex_);
+        memset(buffer, 0, BUFFER_SIZE);
+
+        return username;
+    }
+
 private:
     sockaddr_in server_addr_{};
     int port_ = 0;
@@ -183,8 +197,10 @@ private:
     std::vector<int> client_sockets_;
     bool is_running_ = false;
     std::mutex client_mutex_;
+    std::mutex buffer_mutex_;
     ServerState server_state_ = ServerState::STOP;
     std::vector<std::thread> client_threads_;
+    char buffer[BUFFER_SIZE] = "";
 };
 
 ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
