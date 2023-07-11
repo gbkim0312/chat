@@ -92,7 +92,7 @@ private:
             }
             else
             {
-                fmt::print("Received: {}\n", std::string(buffer, sizeof(buffer)));
+                fmt::print("{}\n", std::string(buffer, sizeof(buffer)));
             }
             memset(buffer, 0, sizeof(buffer));
         }

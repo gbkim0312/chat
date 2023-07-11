@@ -11,12 +11,14 @@
 
 #define BUFFER_SIZE 1024
 
-struct Client
-{
-    int client_id;
-    std::string username;
-    int client_socket;
-};
+// struct Client
+// {
+//     int client_id;
+//     std::string username;
+//     int client_socket;
+//     std::thread client_thread;
+// };
+
 class ChatServer::ChatServerImpl
 {
 public:
@@ -70,19 +72,19 @@ public:
 
             // get username from the client
             std::string username = getClientUserName(client_socket);
-            fmt::print("Client connected. Socket FD: {} | username: {} \n", client_socket, username);
+            fmt::print("Client connected. Socket FD: {} | username: {}\n", client_socket, username);
 
             // push_back the client socket to clientSockets.
             client_sockets_.push_back(client_socket);
 
             // start clientHandler thread
-            std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket);
+            std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket, username);
             client_thread.detach();
             client_threads_.push_back(std::move(client_thread));
         }
     }
 
-    void handleClient(const int &client_socket)
+    void handleClient(int client_socket, const std::string &username)
     {
         char buffer[BUFFER_SIZE];
         memset(buffer, 0, BUFFER_SIZE);
@@ -100,7 +102,8 @@ public:
                 fmt::print("Client disconnected. Socket FD: {}\n", client_socket);
                 break;
             }
-            broadcastMessage(std::string(buffer, bytes_recv), bytes_recv, client_socket);
+
+            broadcastMessage(std::string(buffer, bytes_recv), client_socket, username);
 
             memset(buffer, 0, BUFFER_SIZE);
         }
@@ -112,13 +115,15 @@ public:
         client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
     }
 
-    void broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket)
+    void broadcastMessage(const std::string &message, const int &sender_socket, const std::string &username)
     {
+        std::string text = fmt::format("[{}] : {}", username, message);
+
         for (auto client_socket : client_sockets_)
         {
             if (client_socket != sender_socket)
             {
-                auto sendBytes = send(client_socket, message.c_str(), message_size, 0);
+                auto sendBytes = send(client_socket, text.c_str(), text.size(), 0);
                 if (sendBytes < 0)
                 {
                     handleError("Failed to send message to clients");
@@ -191,12 +196,10 @@ private:
     std::vector<int> client_sockets_;
     bool is_running_ = false;
     std::mutex client_mutex_;
-    std::mutex buffer_mutex_;
     ServerState server_state_ = ServerState::STOP;
     std::vector<std::thread> client_threads_;
-    std::vector<Client> clients_;
-    char buffer[BUFFER_SIZE] = "";
-    int client_id = 0;
+    // std::vector<Client> clients_;
+    // int client_id_ = 0;
 };
 
 ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
