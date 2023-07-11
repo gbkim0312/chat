@@ -21,7 +21,7 @@ public:
 
 private:
     class ChatClientImpl;
-    std::unique_ptr<ChatClientImpl> pImpl;
+    std::unique_ptr<ChatClientImpl> pimpl_;
 };
 
 #endif // CHAT_CLIENT_HPP

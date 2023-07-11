@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     int port = atoi(argv[1]);
     ChatServer chat_server(port);
     ServerState server_state;
-    int errorCounts = 0;
+    int error_counts = 0;
 
     while (true)
     {
@@ -24,10 +24,10 @@ int main(int argc, char *argv[])
 
         if (server_state == ServerState::ERROR)
         {
-            errorCounts++;
-            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", errorCounts);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            if (errorCounts > 9)
+            error_counts++;
+            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", error_counts);
+            std::this_thread::sleep_for(std::chrono::seconds(6));
+            if (error_counts > 9)
             {
                 break;
             }

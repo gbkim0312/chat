@@ -11,7 +11,7 @@ enum class ServerState
 class ChatServer
 {
 public:
-    ChatServer(const int &port);
+    ChatServer(int port);
     ~ChatServer();
 
     void start();

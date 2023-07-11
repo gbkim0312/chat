@@ -67,6 +67,7 @@ private:
     void recvMessages()
     {
         char buffer[1024];
+        memset(buffer, 0, sizeof(buffer));
 
         while (is_running_)
         {

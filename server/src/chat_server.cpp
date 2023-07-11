@@ -9,10 +9,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+struct client
+{
+    uint16_t client_id;
+    std::string username;
+    int client_socket;
+};
+
 class ChatServer::ChatServerImpl
 {
 public:
-    ChatServerImpl(const int &port) : port_(port) {}
+    ChatServerImpl(int port) : port_(port) {}
 
     void start()
     {
@@ -45,9 +52,13 @@ public:
             server_state_ = ServerState::ERROR;
         }
 
+        if (server_state_ == ServerState::RUNNING)
+        {
+            fmt::print("Server started. Listening on port {}\n", port_);
+        }
+
         while (server_state_ == ServerState::RUNNING)
         {
-            fmt::print("Server started. Listening on port {} \n", port_);
             // accept clients
             int client_socket = accept(server_socket_, nullptr, nullptr);
             if (client_socket < 0)
@@ -89,10 +100,8 @@ public:
                 fmt::print("Client disconnected. Socket FD: {}", client_socket);
                 break;
             }
-            else
-            {
-                broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, client_socket);
-            }
+
+            broadcastMessage(std::string(buffer, bytesRecv), bytesRecv, client_socket);
             memset(buffer, 0, sizeof(buffer));
         }
 
@@ -121,13 +130,8 @@ public:
     void stop()
     {
         server_state_ = ServerState::STOP;
-        // join all client thread
         joinAllClientThread();
-
-        // close all client socket
         closeAllClientSockets();
-
-        // close server socket
         close(server_socket_);
     }
 
@@ -174,7 +178,7 @@ private:
     std::vector<std::thread> client_threads_;
 };
 
-ChatServer::ChatServer(const int &port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
+ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
 
 ChatServer::~ChatServer() = default; // 필수적..?
 
