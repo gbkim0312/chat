@@ -180,13 +180,20 @@ public:
         auto bytes_recv = recv(client_socket, buffer, BUFFER_SIZE, 0);
         if (bytes_recv == -1)
         {
-            handleError("Failed to send message");
+            handleError("Failed to receive message");
         }
 
-        std::string username = std::string(buffer, BUFFER_SIZE);
-        memset(buffer, 0, BUFFER_SIZE);
+        std::string username = std::string(buffer, bytes_recv);
+
+        username.erase(0, username.find_first_not_of(" \t\r\n"));
+        username.erase(username.find_last_not_of(" \t\r\n") + 1);
 
         return username;
+    }
+
+    void setPort(int port)
+    {
+        port_ = port;
     }
 
 private:
@@ -219,4 +226,9 @@ ServerState ChatServer::getState()
 void ChatServer::stop()
 {
     pimpl_->stop();
+}
+
+void ChatServer::setPort(int port)
+{
+    pimpl_->setPort(port);
 }

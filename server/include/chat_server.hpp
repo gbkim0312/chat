@@ -17,6 +17,7 @@ public:
     void start();
     ServerState getState();
     void stop();
+    void setPort(int port);
 
 private:
     class ChatServerImpl;
