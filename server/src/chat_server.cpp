@@ -99,7 +99,7 @@ public:
             }
             else if (bytes_recv == 0)
             {
-                fmt::print("Client disconnected. Socket FD: {}", client_socket);
+                fmt::print("Client disconnected. Socket FD: {}\n", client_socket);
                 break;
             }
             broadcastMessage(std::string(buffer, bytes_recv), bytes_recv, client_socket);
