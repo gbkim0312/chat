@@ -14,7 +14,9 @@ public:
     ChatServer(const int &port);
     ~ChatServer();
 
-    ServerState start();
+    void start();
+    ServerState getState();
+    void stop();
 
 private:
     class ChatServerImpl;

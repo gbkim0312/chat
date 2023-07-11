@@ -14,7 +14,7 @@ class ChatServer::ChatServerImpl
 public:
     ChatServerImpl(const int &port) : port_(port) {}
 
-    ServerState start()
+    void start()
     {
         server_state_ = ServerState::RUNNING;
 
@@ -23,7 +23,7 @@ public:
         if (server_socket_ < 0)
         {
             handleError("Fail to create the server socket");
-            return ServerState::ERROR;
+            server_state_ = ServerState::ERROR;
         };
 
         // set the address of the socket
@@ -35,21 +35,19 @@ public:
         if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
             handleError("Failed to bind socket");
-            return ServerState::ERROR;
+            server_state_ = ServerState::ERROR;
         }
 
         // listen clients
         if (listen(server_socket_, 1) == -1)
         {
             handleError("Fail to listen for connection");
-            return ServerState::ERROR;
+            server_state_ = ServerState::ERROR;
         }
 
-        is_running_ = true;
-        fmt::print("Server started. Listening on port {} \n", port_);
-
-        while (is_running_)
+        while (server_state_ == ServerState::RUNNING)
         {
+            fmt::print("Server started. Listening on port {} \n", port_);
             // accept clients
             int client_socket = accept(server_socket_, nullptr, nullptr);
             if (client_socket < 0)
@@ -65,11 +63,12 @@ public:
 
             // start clientHandler thread
             std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket);
-            client_thread.detach(); // 스레드를 분리해서 백그라운드에서 실행
+            client_thread.detach();
+            client_threads_.push_back(std::move(client_thread));
         }
 
-        is_running_ = false;
-        return ServerState::STOP;
+        // exit(-1);
+        // server_state_ = ServerState::STOP;
     }
 
     void handleClient(const int &client_socket)
@@ -77,9 +76,9 @@ public:
         char buffer[1024];
         memset(buffer, 0, sizeof(buffer));
 
-        while (is_running_)
+        while (server_state_ == ServerState::RUNNING)
         {
-            ssize_t bytesRecv = recv(client_socket, buffer, sizeof(buffer), 0);
+            auto bytesRecv = recv(client_socket, buffer, sizeof(buffer), 0);
             if (bytesRecv < 0)
             {
                 handleError("Failed to receive message from the client");
@@ -106,11 +105,11 @@ public:
 
     void broadcastMessage(const std::string &message, const ssize_t &message_size, const int &sender_socket)
     {
-        for (int client_socket : client_sockets_)
+        for (auto client_socket : client_sockets_)
         {
             if (client_socket != sender_socket)
             {
-                ssize_t sendBytes = send(client_socket, message.c_str(), message_size, 0);
+                auto sendBytes = send(client_socket, message.c_str(), message_size, 0);
                 if (sendBytes < 0)
                 {
                     handleError("Failed to send message to clients");
@@ -119,10 +118,49 @@ public:
         }
     }
 
+    void stop()
+    {
+        server_state_ = ServerState::STOP;
+        // join all client thread
+        joinAllClientThread();
+
+        // close all client socket
+        closeAllClientSockets();
+
+        // close server socket
+        close(server_socket_);
+    }
+
     void handleError(const std::string &error_message)
     {
         fmt::print("runtime error: {}\n", error_message);
         // throw std::runtime_error(errorMessage);
+    }
+
+    ServerState getState() const
+    {
+        return server_state_;
+    }
+
+    void joinAllClientThread()
+    {
+        for (auto &client_thread : client_threads_)
+        {
+            if (client_thread.joinable())
+            {
+                client_thread.join();
+            }
+        }
+    }
+
+    void closeAllClientSockets()
+    {
+        std::lock_guard<std::mutex> lock_guard(client_mutex_);
+        for (auto client_socket : client_sockets_)
+        {
+            close(client_socket);
+        }
+        client_sockets_.clear();
     }
 
 private:
@@ -133,13 +171,24 @@ private:
     bool is_running_ = false;
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
+    std::vector<std::thread> client_threads_;
 };
 
 ChatServer::ChatServer(const int &port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
 
 ChatServer::~ChatServer() = default; // 필수적..?
 
-ServerState ChatServer::start()
+void ChatServer::start()
 {
-    return pimpl_->start();
+    pimpl_->start();
+}
+
+ServerState ChatServer::getState()
+{
+    return pimpl_->getState();
+}
+
+void ChatServer::stop()
+{
+    pimpl_->stop();
 }

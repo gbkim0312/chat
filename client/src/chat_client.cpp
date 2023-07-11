@@ -67,11 +67,10 @@ private:
     void recvMessages()
     {
         char buffer[1024];
-        memset(buffer, 0, sizeof(buffer));
 
         while (is_running_)
         {
-            ssize_t bytes_recv = recv(server_socket_, buffer, sizeof(buffer), 0);
+            auto bytes_recv = recv(server_socket_, buffer, sizeof(buffer), 0);
             if (bytes_recv < 0)
             {
                 handleError("Fail to receive message from the server");
@@ -102,7 +101,7 @@ private:
                 break;
             }
 
-            ssize_t byte_sent = send(server_socket_, message.c_str(), message.size(), 0);
+            auto byte_sent = send(server_socket_, message.c_str(), message.size(), 0);
             if (byte_sent == -1)
             {
                 handleError("Failed to send message");
@@ -112,16 +111,16 @@ private:
 };
 
 ChatClient::ChatClient(const std::string &server_ip, const int &port)
-    : pImpl(std::make_unique<ChatClientImpl>(server_ip, port)) {}
+    : pimpl_(std::make_unique<ChatClientImpl>(server_ip, port)) {}
 
 ChatClient::~ChatClient() = default;
 
 bool ChatClient::connectToServer()
 {
-    return pImpl->connectToServer();
+    return pimpl_->connectToServer();
 }
 
 void ChatClient::start()
 {
-    pImpl->start();
+    pimpl_->start();
 }
