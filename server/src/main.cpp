@@ -3,17 +3,6 @@
 #include "chat_server.hpp"
 #include "spdlog/fmt/fmt.h"
 
-ChatServer chat_server(0);
-
-void signalHandler(int signum)
-{
-    if (signum == SIGINT)
-    {
-        chat_server.stop();
-        // exit(0);
-    }
-}
-
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -23,11 +12,12 @@ int main(int argc, char *argv[])
     }
 
     int port = atoi(argv[1]);
-    chat_server.setPort(port);
+    ChatServer chat_server(port);
 
     ServerState server_state;
-    int error_counts = 0;
-    signal(SIGINT, signalHandler);
+    uint8_t error_count = 0;
+
+    // signal(SIGINT, signalHandler);
 
     while (true)
     {
@@ -37,10 +27,10 @@ int main(int argc, char *argv[])
 
         if (server_state == ServerState::ERROR)
         {
-            error_counts++;
-            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", error_counts);
+            ++error_count;
+            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", error_count);
             std::this_thread::sleep_for(std::chrono::seconds(6));
-            if (error_counts > 9)
+            if (error_count > 10)
             {
                 break;
             }

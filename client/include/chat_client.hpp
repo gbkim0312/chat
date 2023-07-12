@@ -1,15 +1,14 @@
-#ifndef CHAT_CLIENT_HPP
-#define CHAT_CLIENT_HPP
+#pragma once
 
 #include <memory>
 #include <string>
 
-enum class ClientState
-{
-    RUNNING,
-    ERROR,
-    STOP
-};
+// enum class ClientState
+// {
+//     RUNNING,
+//     ERROR,
+//     STOP
+// };
 
 class ChatClient
 {
@@ -23,5 +22,3 @@ private:
     class ChatClientImpl;
     std::unique_ptr<ChatClientImpl> pimpl_;
 };
-
-#endif // CHAT_CLIENT_HPP
