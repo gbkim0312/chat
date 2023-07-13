@@ -13,7 +13,7 @@
 class ChatClient::ChatClientImpl
 {
 public:
-    ChatClientImpl(const std::string &server_ip, const int &port) : server_ip_(server_ip), port_(port) {}
+    ChatClientImpl(const std::string &server_ip, int port, const std::string &username) : server_ip_(server_ip), port_(port), username_(username) {}
 
     bool connectToServer()
     {
@@ -30,7 +30,7 @@ public:
 
         if (connect(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
-            perror("Failed to connect to server");
+            fmt::print("Failed to connect to server\n");
             close(server_socket_);
             return false;
         }
@@ -41,6 +41,13 @@ public:
     void start()
     {
         is_running_ = true;
+
+        // send username to the server
+        auto byte_sent = send(server_socket_, username_.c_str(), username_.size(), 0);
+        if (byte_sent == -1)
+        {
+            handleError("Failed to send message");
+        }
 
         recv_thread_ = std::thread(&ChatClientImpl::recvMessages, this);
         send_thread_ = std::thread(&ChatClientImpl::sendMessage, this);
@@ -57,6 +64,7 @@ private:
     bool is_running_ = false;
     std::thread recv_thread_;
     std::thread send_thread_;
+    std::string username_;
 
     void handleError(const std::string &error_message)
     {
@@ -66,12 +74,12 @@ private:
 
     void recvMessages()
     {
-        char buffer[1024];
+        std::array<char, 1024> buffer = {0};
 
         while (is_running_)
         {
-            auto bytes_recv = recv(server_socket_, buffer, sizeof(buffer), 0);
-            if (bytes_recv < 0)
+            auto bytes_recv = recv(server_socket_, buffer.data(), 1024, 0);
+            if (bytes_recv == -1)
             {
                 handleError("Fail to receive message from the server");
                 break;
@@ -83,9 +91,8 @@ private:
             }
             else
             {
-                fmt::print("Received: {}\n", std::string(buffer, sizeof(buffer)));
+                fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
             }
-            memset(buffer, 0, sizeof(buffer));
         }
     }
 
@@ -110,8 +117,7 @@ private:
     }
 };
 
-ChatClient::ChatClient(const std::string &server_ip, const int &port)
-    : pimpl_(std::make_unique<ChatClientImpl>(server_ip, port)) {}
+ChatClient::ChatClient(const std::string &server_ip, int port, const std::string &username) : pimpl_(std::make_unique<ChatClientImpl>(server_ip, port, username)) {}
 
 ChatClient::~ChatClient() = default;
 
