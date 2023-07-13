@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <set>
 
 constexpr int BUFFER_SIZE = 1024;
 
@@ -38,7 +39,7 @@ public:
             fmt::print("Client connected. Socket FD: {} | username: {}\n", client_socket, username);
 
             // push_back the client socket to clientSockets.
-            client_sockets_.push_back(client_socket);
+            client_sockets_.insert(client_socket);
 
             // start clientHandler thread
             std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket, username);
@@ -75,7 +76,8 @@ public:
 
         // remove the clientSocket.
         std::lock_guard<std::mutex> lock_guard(client_mutex_);
-        client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
+        // client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
+        client_sockets_.erase(client_socket);
     }
 
     void broadcastMessage(const std::string &message, const int &sender_socket, const std::string &username)
@@ -198,7 +200,8 @@ private:
     sockaddr_in server_addr_{};
     int port_ = 0;
     int server_socket_ = 0;
-    std::vector<int> client_sockets_;
+    // std::vector<int> client_sockets_;
+    std::set<int> client_sockets_;
     bool is_running_ = false;
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
