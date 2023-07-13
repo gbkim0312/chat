@@ -113,7 +113,8 @@ public:
         server_addr_.sin_port = htons(port_);
 
         // binding the socket and the address
-        if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
+        // if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
+        if (bind(server_socket_, (struct sockaddr *)&server_addr_, sizeof(server_addr_)) == -1)
         {
             handleError("Failed to bind socket");
             server_state_ = ServerState::ERROR;

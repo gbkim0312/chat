@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::seconds(1));
         fmt::print("Can not connect to the server. re-connecting...({} / 20)\n", error_count);
     }
-
+    fmt::print("Successfully connect to the server ({}:{}).\n", server_ip, port);
     client.start();
 
     return 0;
