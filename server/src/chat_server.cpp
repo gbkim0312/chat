@@ -200,13 +200,11 @@ private:
     sockaddr_in server_addr_{};
     int port_ = 0;
     int server_socket_ = 0;
-    // std::vector<int> client_sockets_;
     std::set<int> client_sockets_;
     bool is_running_ = false;
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
     std::vector<std::thread> client_threads_;
-    // std::vector<Client> clients_;
     int client_id_ = 0;
 };
 

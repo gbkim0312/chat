@@ -30,7 +30,7 @@ public:
 
         if (connect(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
-            perror("Failed to connect to server");
+            fmt::print("Failed to connect to server\n");
             close(server_socket_);
             return false;
         }
@@ -74,12 +74,11 @@ private:
 
     void recvMessages()
     {
-        char buffer[1024];
-        memset(buffer, 0, sizeof(buffer));
+        std::array<char, 1024> buffer = {0};
 
         while (is_running_)
         {
-            auto bytes_recv = recv(server_socket_, buffer, sizeof(buffer), 0);
+            auto bytes_recv = recv(server_socket_, buffer.data(), 1024, 0);
             if (bytes_recv == -1)
             {
                 handleError("Fail to receive message from the server");
@@ -92,9 +91,8 @@ private:
             }
             else
             {
-                fmt::print("{}\n", std::string(buffer, sizeof(buffer)));
+                fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
             }
-            memset(buffer, 0, sizeof(buffer));
         }
     }
 
