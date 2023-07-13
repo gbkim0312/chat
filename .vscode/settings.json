@@ -65,6 +65,9 @@
         "compare": "cpp",
         "concepts": "cpp",
         "algorithm": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "__tree": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp"
     }
 }

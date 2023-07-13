@@ -2,6 +2,15 @@
 
 #include <memory>
 #include <string>
+#include "spdlog/fmt/fmt.h"
+#include "chat_client.hpp"
+#include <iostream>
+#include <thread>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 // enum class ClientState
 // {

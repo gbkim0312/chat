@@ -1,20 +1,22 @@
-#include <thread>
-#include <chrono>
 #include "chat_server.hpp"
+#include <cstdlib>
 #include "spdlog/fmt/fmt.h"
+#include <cstdint>
+#include <chrono>
+#include <thread>
 
 int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        fmt::print("usage: {} <PORT_NUM>", argv[0]);
-        exit(-1);
+        fmt::print("usage: {} <PORT_NUM>", argv[0]); // NOLINT
+        return 0;
     }
 
-    int port = atoi(argv[1]);
+    int port = atoi(argv[1]); // NOLINT
     ChatServer chat_server(port);
 
-    ServerState server_state;
+    ServerState server_state = ServerState::STOP;
     uint8_t error_count = 0;
 
     // signal(SIGINT, signalHandler);

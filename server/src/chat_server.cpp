@@ -1,21 +1,27 @@
 #include "chat_server.hpp"
 #include "spdlog/fmt/fmt.h"
-#include <string>
-#include <vector>
-#include <thread>
-#include <algorithm>
-#include <stdexcept>
+
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <array>
+#include <string>
+#include <utility>
+#include <mutex>
+#include <thread>
 #include <set>
+#include <vector>
+#include <memory>
 
-constexpr int BUFFER_SIZE = 1024;
+namespace
+{
+    constexpr int BUFFER_SIZE = 1024;
+};
 
 class ChatServer::ChatServerImpl
 {
 public:
-    ChatServerImpl(int port) : port_(port) {}
+    explicit ChatServerImpl(int port) : port_(port) {}
 
     void start()
     {
@@ -40,6 +46,13 @@ public:
 
             // push_back the client socket to clientSockets.
             client_sockets_.insert(client_socket);
+
+            // create client object
+            Client client;
+            client.id = ++client_id_;
+            client.socket = client_socket;
+            client.state = ClientState::CONNECTED;
+            client.username = username;
 
             // start clientHandler thread
             std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket, username);
@@ -68,21 +81,30 @@ public:
             }
 
             broadcastMessage(std::string(buffer.data(), bytes_recv), client_socket, username);
-
             buffer.fill(0);
         }
 
         close(client_socket);
 
         // remove the clientSocket.
-        std::lock_guard<std::mutex> lock_guard(client_mutex_);
+        std::lock_guard<std::mutex> const lock_guard(client_mutex_);
         // client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
         client_sockets_.erase(client_socket);
     }
 
+    // void handleClient(Client client, const std::string &username)
+    // {
+    //     ClientState clinet_state;
+    //     while (server_state_ == ServerState::RUNNING)
+    //     {
+    //         clinet_state = client.state;
+    //         switch
+    //     }
+    // }
+
     void broadcastMessage(const std::string &message, const int &sender_socket, const std::string &username)
     {
-        std::string text = fmt::format("[{}] : {}", username, message);
+        const std::string text = fmt::format("[{}] : {}", username, message);
 
         for (auto client_socket : client_sockets_)
         {
@@ -110,11 +132,11 @@ public:
         // set the address of the socket
         server_addr_.sin_family = AF_INET;
         server_addr_.sin_addr.s_addr = INADDR_ANY;
-        server_addr_.sin_port = htons(port_);
+        server_addr_.sin_port = htons(port_); // NOLINT
 
         // binding the socket and the address
         // if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
-        if (bind(server_socket_, (struct sockaddr *)&server_addr_, sizeof(server_addr_)) == -1)
+        if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
             handleError("Failed to bind socket");
             server_state_ = ServerState::ERROR;
@@ -141,7 +163,7 @@ public:
         close(server_socket_);
     }
 
-    void handleError(const std::string &error_message)
+    static void handleError(const std::string &error_message)
     {
         fmt::print("runtime error: {}\n", error_message);
         // throw std::runtime_error(errorMessage);
@@ -165,7 +187,7 @@ public:
 
     void closeAllClientSockets()
     {
-        std::lock_guard<std::mutex> lock_guard(client_mutex_);
+        const std::lock_guard<std::mutex> lock_guard(client_mutex_);
         for (auto client_socket : client_sockets_)
         {
             close(client_socket);
@@ -173,10 +195,9 @@ public:
         client_sockets_.clear();
     }
 
-    std::string getClientUserName(int client_socket)
+    static std::string getClientUserName(int client_socket)
     {
-        std::array<char, 1024> buffer;
-        buffer.fill(0);
+        std::array<char, 1024> buffer = {0};
 
         auto bytes_recv = recv(client_socket, buffer.data(), 1024, 0);
         if (bytes_recv == -1)
