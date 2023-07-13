@@ -1,6 +1,7 @@
 project(server)
 
 add_executable(${PROJECT_NAME}
+    include/chat_server.hpp
     src/chat_server.cpp
     src/main.cpp
 )

@@ -7,14 +7,18 @@
 #include <string>
 #include <thread>
 #include <memory>
+#include <utility>
 
-#include "spdlog/fmt/fmt.h"
+// #include <spdlog/fmt/fmt.h>
+#include <fmt/core.h>
 #include <iostream>
 #include <arpa/inet.h>
+#include <stdexcept>
+
 class ChatClient::ChatClientImpl
 {
 public:
-    explicit ChatClientImpl(const std::string &server_ip, int port, const std::string &username) : server_ip_(server_ip), port_(port), username_(username) {}
+    explicit ChatClientImpl(std::string server_ip, int port, std::string username) : server_ip_(std::move(server_ip)), port_(port), username_(std::move(username)) {}
 
     bool connectToServer()
     {

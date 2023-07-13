@@ -1,6 +1,7 @@
 #include "chat_server.hpp"
 #include <cstdlib>
-#include "spdlog/fmt/fmt.h"
+// #include <spdlog/fmt/fmt.h>
+#include <fmt/core.h>
 #include <cstdint>
 #include <chrono>
 #include <thread>
