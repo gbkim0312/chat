@@ -1,5 +1,8 @@
 #include "chat_server.hpp"
+#include "client.hpp"
+#include "chat_room.hpp"
 // #include <spdlog/fmt/fmt.h>
+#include "chat_room_manager.hpp"
 #include <fmt/core.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -12,6 +15,7 @@
 #include <set>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 namespace
 {
@@ -44,63 +48,80 @@ public:
             std::string username = getClientUserName(client_socket);
             fmt::print("Client connected. Socket FD: {} | username: {}\n", client_socket, username);
 
-            // push_back the client socket to clientSockets.
+            // insert the client socket to clientSockets.
             client_sockets_.insert(client_socket);
 
             // create client object
-            Client client;
-            client.id = ++client_id_;
-            client.socket = client_socket;
+            Client client = createClient(client_socket, username);
             client.state = ClientState::CONNECTED;
-            client.username = username;
-
             // start clientHandler thread
-            std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket, username);
+            // std::thread client_thread(&ChatServerImpl::handleClient, this, client_socket, username);
+            std::thread client_thread(&ChatServerImpl::handleClient, this, client);
+
+            clients_.push_back(std::move(client));
             client_thread.detach();
             client_threads_.push_back(std::move(client_thread));
         }
     }
 
-    void handleClient(int client_socket, const std::string &username)
+    // void handleClient(int client_socket, const std::string &username)
+    // {
+    //     std::array<char, 1024> buffer = {0};
+    //     // buffer.fill(0);
+
+    //     while (server_state_ == ServerState::RUNNING)
+    //     {
+    //         auto bytes_recv = recv(client_socket, buffer.data(), 1024, 0);
+    //         if (bytes_recv < 0)
+    //         {
+    //             handleError("Failed to receive message from the client");
+    //             break;
+    //         }
+    //         else if (bytes_recv == 0)
+    //         {
+    //             fmt::print("Client disconnected. Socket FD: {}\n", client_socket);
+    //             break;
+    //         }
+
+    //         broadcastMessage(std::string(buffer.data(), bytes_recv), client_socket, username);
+    //         buffer.fill(0);
+    //     }
+
+    //     close(client_socket);
+
+    //     // remove the clientSocket.
+    //     std::lock_guard<std::mutex> const lock_guard(client_mutex_);
+    //     client_sockets_.erase(client_socket);
+    // }
+
+    void handleClient(Client client)
     {
-        std::array<char, 1024> buffer = {0};
-        // buffer.fill(0);
+        // ClientState client_state = ClientState::DEFAULT;
 
         while (server_state_ == ServerState::RUNNING)
         {
-            auto bytes_recv = recv(client_socket, buffer.data(), 1024, 0);
-            if (bytes_recv < 0)
-            {
-                handleError("Failed to receive message from the client");
-                break;
-            }
-            else if (bytes_recv == 0)
-            {
-                fmt::print("Client disconnected. Socket FD: {}\n", client_socket);
-                break;
-            }
+            const ClientState client_state = client.state;
+            fmt::print("{}", static_cast<int>(client_state));
 
-            broadcastMessage(std::string(buffer.data(), bytes_recv), client_socket, username);
-            buffer.fill(0);
+            switch (client_state)
+            {
+            case ClientState::CONNECTED:
+                showRoomLists(client);
+                break;
+            case ClientState::ROOM_LIST_SENT:
+                getSelectedRoom(client);
+                break;
+            case ClientState::ROOM_SELECTED:
+                joinRoom(client);
+                break;
+            case ClientState::CHATTING:
+                startChatting();
+                break;
+            default:
+                break;
+            }
         }
-
-        close(client_socket);
-
-        // remove the clientSocket.
-        std::lock_guard<std::mutex> const lock_guard(client_mutex_);
-        // client_sockets_.erase(std::remove(client_sockets_.begin(), client_sockets_.end(), client_socket), client_sockets_.end());
-        client_sockets_.erase(client_socket);
     }
-
-    // void handleClient(Client client, const std::string &username)
-    // {
-    //     ClientState clinet_state;
-    //     while (server_state_ == ServerState::RUNNING)
-    //     {
-    //         clinet_state = client.state;
-    //         switch
-    //     }
-    // }
 
     void broadcastMessage(const std::string &message, const int &sender_socket, const std::string &username)
     {
@@ -135,7 +156,6 @@ public:
         server_addr_.sin_port = htons(port_); // NOLINT
 
         // binding the socket and the address
-        // if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
             handleError("Failed to bind socket");
@@ -153,6 +173,12 @@ public:
         {
             fmt::print("Server started. Listening on port {}\n", port_);
         }
+
+        // create default rooms
+        // TODO: User가 room을 만들 수 있도록 해야함
+        room_manager_.createRoom("Room1", 0);
+        room_manager_.createRoom("Room2", 1);
+        room_manager_.createRoom("Room3", 2);
     }
 
     void stop()
@@ -218,6 +244,97 @@ public:
         port_ = port;
     }
 
+    Client createClient(int client_socket, const std::string &username)
+    {
+        Client client;
+        client.id = ++client_id_;
+        client.socket = client_socket;
+        client.state = ClientState::CONNECTED;
+        client.username = username;
+        return client;
+    }
+
+    bool showRoomLists(Client &client)
+    {
+        auto rooms = room_manager_.getRooms();
+
+        // TODO: 비어있을 때 처리 추가 필요
+        if (rooms.empty())
+        {
+            fmt::print("room is empty\n");
+            client.state = ClientState::CONNECTED;
+            return false;
+        };
+
+        // sort rooms by index
+        std::sort(rooms.begin(), rooms.end(), [](ChatRoom const &r1, ChatRoom const &r2)
+                  { return r1.getIndex() < r2.getIndex(); });
+
+        // build string
+        std::string room_lists_string = "Choose Room List:\n\n";
+        for (const auto &room : rooms)
+        {
+            room_lists_string += fmt::format("Room Index: {}, Name: {}\n", room.getIndex(), room.getName());
+        }
+
+        // send room lists
+        if (sendMessageToClient(client.socket, room_lists_string))
+        {
+            client.state = ClientState::ROOM_LIST_SENT;
+            return true;
+        }
+        // TODO: 예외처리 추가 필요
+        else
+        {
+            handleError("Fail to send Room Lists");
+            client.state = ClientState::CONNECTED;
+            return false;
+        }
+    }
+
+    static void getSelectedRoom(Client &client)
+    {
+        client.room_index = std::stoi(recvMessageFromClient(client.socket));
+        client.state = ClientState::ROOM_SELECTED;
+    }
+
+    void joinRoom(Client &client)
+    {
+        auto selectedRoom = room_manager_.findRoomByIndex(client.room_index);
+        if (selectedRoom)
+        {
+            client.state = ClientState::CHATTING;
+            const std::string message = "You have joined the room.";
+            sendMessageToClient(client.socket, message);
+        }
+        // TODO: 예외처리 필요
+        else
+        {
+            const std::string message = "Failed to join the room. The room does not exist.";
+            sendMessageToClient(client.socket, message);
+        }
+    }
+
+    void startChatting()
+    {
+    }
+
+    static bool sendMessageToClient(int socket, const std::string &message)
+    {
+        auto sendBytes = send(socket, message.c_str(), message.size(), 0);
+
+        return (sendBytes > 0);
+    }
+
+    static std::string recvMessageFromClient(int socket)
+    {
+        std::array<char, 1024> buffer = {0};
+
+        auto bytes_recv = recv(socket, buffer.data(), 1024, 0);
+        std::string message = std::string(buffer.data(), bytes_recv);
+        return message;
+    }
+
 private:
     sockaddr_in server_addr_{};
     int port_ = 0;
@@ -227,7 +344,9 @@ private:
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
     std::vector<std::thread> client_threads_;
+    std::vector<Client> clients_;
     int client_id_ = 0;
+    ChatRoomManager room_manager_;
 };
 
 ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}

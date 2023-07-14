@@ -12,12 +12,14 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-// enum class ClientState
-// {
-//     RUNNING,
-//     ERROR,
-//     STOP
-// };
+enum class ClientState
+{
+    CONNECTED,
+    ROOM_LIST_RECEIVED, // <--> ROOM_LIST_SENT
+    ROOM_SELECTED,
+    ROOM_JOINED,
+    CHATTING
+};
 
 class ChatClient
 {

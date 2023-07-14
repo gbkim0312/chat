@@ -1,7 +1,7 @@
 project(client)
 
 add_executable(${PROJECT_NAME}
-    include/chat_client.hpp
+    #include/chat_client.hpp
     src/chat_client.cpp
     src/main.cpp
 )
