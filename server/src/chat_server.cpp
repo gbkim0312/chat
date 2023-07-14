@@ -16,6 +16,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+// #include <sys/types.h>
 
 namespace
 {
@@ -115,8 +116,9 @@ public:
                 joinRoom(client);
                 break;
             case ClientState::CHATTING:
-                startChatting();
+                startChatting(client);
                 break;
+                // TODO: DISCONNECTED 상태 구현
             default:
                 break;
             }
@@ -271,7 +273,7 @@ public:
                   { return r1.getIndex() < r2.getIndex(); });
 
         // build string
-        std::string room_lists_string = "Choose Room List:\n\n";
+        std::string room_lists_string = "Choose Room from the followingList:\n\n";
         for (const auto &room : rooms)
         {
             room_lists_string += fmt::format("Room Index: {}, Name: {}\n", room.getIndex(), room.getName());
@@ -315,8 +317,36 @@ public:
         }
     }
 
-    void startChatting()
+    void startChatting(Client &client)
     {
+        auto selectedRoom = room_manager_.findRoomByIndex(client.room_index);
+        fmt::print("room_index: {} ", client.room_index);
+        if (selectedRoom)
+        {
+            selectedRoom->addClient(client);
+            const std::string enterMessage = client.username + " has entered the chat.";
+            // selectedRoom->broadcastMessage(enterMessage, "Server");
+            selectedRoom->broadcastMessage(enterMessage, client);
+
+            while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
+            {
+                std::array<char, BUFFER_SIZE> buffer = {0};
+                auto bytesReceived = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+
+                if (bytesReceived <= 0)
+                {
+                    const std::string disconnectMessage = client.username + " has left the chat.";
+                    // selectedRoom->broadcastMessage(disconnectMessage, "Server");
+                    selectedRoom->broadcastMessage(disconnectMessage, client);
+                    selectedRoom->removeClient(client);
+                    client.state = ClientState::DEFAULT;
+                    break;
+                }
+
+                const std::string message = std::string(buffer.data(), bytesReceived);
+                selectedRoom->broadcastMessage(message, client);
+            }
+        }
     }
 
     static bool sendMessageToClient(int socket, const std::string &message)

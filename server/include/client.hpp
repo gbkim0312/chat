@@ -17,5 +17,5 @@ struct Client
     int socket;
     ClientState state;
     std::string username;
-    int room_index;
+    int room_index = 1;
 };

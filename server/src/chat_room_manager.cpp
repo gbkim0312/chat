@@ -14,25 +14,25 @@ void ChatRoomManager::createDefaultRooms()
     }
 }
 
-void ChatRoomManager::createRoom(const std::string &roomName, int roomIndex)
+void ChatRoomManager::createRoom(const std::string &name, int index)
 {
-    const ChatRoom room(roomName, roomIndex);
+    const ChatRoom room(name, index);
     rooms_.push_back(room);
 }
 
-std::unique_ptr<ChatRoom> ChatRoomManager::findRoomByIndex(int index) const
+std::shared_ptr<ChatRoom> ChatRoomManager::findRoomByIndex(int index) const
 {
     for (auto const &room : rooms_)
     {
         if (room.getIndex() == index)
         {
-            return std::make_unique<ChatRoom>(room);
+            return std::make_shared<ChatRoom>(room);
         }
     }
     return nullptr;
 }
 
-std::vector<ChatRoom> ChatRoomManager::getRooms() const
+const std::vector<ChatRoom> &ChatRoomManager::getRooms()
 {
     return rooms_;
 }

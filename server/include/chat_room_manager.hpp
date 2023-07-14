@@ -10,8 +10,8 @@ public:
     // ChatRoomManager();
     void createRoom(const std::string &roomName, int roomIndex);
     void createDefaultRooms();
-    std::unique_ptr<ChatRoom> findRoomByIndex(int index) const;
-    std::vector<ChatRoom> getRooms() const;
+    std::shared_ptr<ChatRoom> findRoomByIndex(int index) const;
+    const std::vector<ChatRoom> &getRooms();
 
 private:
     std::vector<ChatRoom> rooms_;

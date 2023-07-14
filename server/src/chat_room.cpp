@@ -26,14 +26,20 @@ void ChatRoom::removeClient(const Client &client)
 
 void ChatRoom::broadcastMessage(const std::string &message, const Client &sender)
 {
-    for (auto const &client : clients_)
+    const std::string text = fmt::format("[{}] : {}", sender.username, message);
+    // for (const auto &client : clients_)
+    // {
+    //     fmt::print("send message to {}\n", client.username);
+    // }
+    for (const auto &client : clients_)
     {
         if (client.socket != sender.socket)
         {
-            auto sendBytes = send(client.socket, message.c_str(), message.size(), 0);
+            auto sendBytes = send(client.socket, text.c_str(), text.size(), 0);
+            fmt::print("send message to {}\n", client.username);
             if (sendBytes < 0)
             {
-                fmt::println("Failed to send message to clients");
+                fmt::print("Failed to send message to clients");
             }
         }
     }
