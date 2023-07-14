@@ -1,17 +1,14 @@
 
+cmake_minimum_required(VERSION 3.10)
+project(ChatProject)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/module" ${CMAKE_MODULE_PATH})
 message(STATUS "${CMAKE_MODULE_PATH}")
 include(V2XClangTidyFlags)
 
-
-
-
-cmake_minimum_required(VERSION 3.10)
-project(ChatProject)
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+#if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   # clang-tidy를 통해 정적 분석 수행
-  option(CLANG_TIDY_FIX "Perform fixes for Clang-Tidy" OFF)
+  option(CLANG_TIDY_FIX "Perform fixes for Clang-Tidy" ON)
   find_program(
     CLANG_TIDY_EXE
     NAMES "clang-tidy"
@@ -27,7 +24,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   if((NOT CLANG_TIDY_EXE) OR (NOT CLANG_EXE))
     message(FATAL_ERROR "clang-tidy tool not found")
   endif()
-endif()
+# endif()
 
 # CMAKE_BUILD_TYPE 관련 옵션은 g++ 기본 설정을 따름
 # Default: None
@@ -42,5 +39,5 @@ endif()
 # cmake 모듈 include
 
 
-add_subdirectory(server)
-add_subdirectory(client)
+add_subdirectory_with_static_analysis(server)
+add_subdirectory_with_static_analysis(client)
