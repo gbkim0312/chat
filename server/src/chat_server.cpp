@@ -336,7 +336,7 @@ public:
                 if (bytesReceived <= 0)
                 {
                     const std::string disconnectMessage = client.username + " has left the chat.";
-                    // selectedRoom->broadcastMessage(disconnectMessage, "Server");
+                    // selectedRoom->broadcastMee(disconnectMessage, "Server");
                     selectedRoom->broadcastMessage(disconnectMessage, client);
                     selectedRoom->removeClient(client);
                     client.state = ClientState::DEFAULT;

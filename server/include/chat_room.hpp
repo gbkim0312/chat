@@ -9,7 +9,7 @@ class ChatRoom
 public:
     ChatRoom(std::string name, int index);
 
-    void addClient(const Client &client);
+    void addClient(Client &client);
     void removeClient(const Client &client);
     void broadcastMessage(const std::string &message, const Client &sender);
 
