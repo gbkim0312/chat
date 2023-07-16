@@ -1,6 +1,6 @@
 #include "chat_server.hpp"
 #include "client.hpp"
-#include "chat_room.hpp"
+// #include "chat_room.hpp"
 // #include <spdlog/fmt/fmt.h>
 #include "chat_room_manager.hpp"
 #include <fmt/core.h>
@@ -15,7 +15,7 @@
 #include <set>
 #include <vector>
 #include <memory>
-#include <algorithm>
+// #include <algorithm>
 // #include <sys/types.h>
 
 namespace
@@ -268,15 +268,15 @@ public:
             return false;
         };
 
-        // sort rooms by index
-        std::sort(rooms.begin(), rooms.end(), [](ChatRoom const &r1, ChatRoom const &r2)
-                  { return r1.getIndex() < r2.getIndex(); });
+        // // sort rooms by index
+        // std::sort(rooms.begin(), rooms.end(), [](ChatRoom const &r1, ChatRoom const &r2)
+        //           { return r1.getIndex() < r2.getIndex(); });
 
         // build string
         std::string room_lists_string = "Choose Room from the followingList:\n\n";
         for (const auto &room : rooms)
         {
-            room_lists_string += fmt::format("Room Index: {}, Name: {}\n", room.getIndex(), room.getName());
+            room_lists_string += fmt::format("Room Index: {}, Name: {}\n", room->getIndex(), room->getName());
         }
 
         // send room lists

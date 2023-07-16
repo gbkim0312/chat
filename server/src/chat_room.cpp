@@ -12,6 +12,7 @@ void ChatRoom::addClient(Client &client)
 {
     clients_.push_back(client);
 }
+// move로 념거주기,
 
 void ChatRoom::removeClient(const Client &client)
 {
