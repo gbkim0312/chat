@@ -250,6 +250,7 @@ private:
         std::array<char, BUFFER_SIZE> buffer = {0};
         auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
         const std::string message = std::string(buffer.data(), bytes_received);
+        client.state = ClientState::ROOM_SELECTED;
 
         if (bytes_received < 0 || message.empty())
         {
@@ -259,6 +260,10 @@ private:
         else if (message == "/create")
         {
             client.state = ClientState::CREATING_ROOM;
+        }
+        else if (message == "/reload")
+        {
+            client.state = ClientState::CONNECTED;
         }
         else
         {
@@ -271,7 +276,6 @@ private:
                 sendMessageToClient(client.socket, "Wrong input. Choose again");
                 client.state = ClientState::ROOM_LIST_SENT;
             }
-            client.state = ClientState::ROOM_SELECTED;
         }
     }
 
@@ -318,7 +322,7 @@ private:
     {
         auto &selectedRoom = room_manager_.findRoomByIndex(client.room_index);
         const std::string enterMessage = client.username + " has entered the chat.";
-        selectedRoom.broadcastMessage(enterMessage, client);
+        selectedRoom.broadcastMessage(enterMessage, client, true);
 
         while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
         {
@@ -336,14 +340,14 @@ private:
             if (message == "/back")
             {
                 const std::string message = fmt::format("{} has left the chat.", client.username);
-                selectedRoom.broadcastMessage(message, client);
+                selectedRoom.broadcastMessage(message, client, true);
                 selectedRoom.removeClient(client);
                 client.state = ClientState::CONNECTED;
                 break;
             }
 
             // broadcast the messages to the clients in the room
-            selectedRoom.broadcastMessage(message, client);
+            selectedRoom.broadcastMessage(message, client, false);
         }
     }
 
@@ -351,7 +355,7 @@ private:
     {
         auto &selectedRoom = room_manager_.findRoomByIndex(client.room_index);
         const std::string disconnectMessage = client.username + " has left the chat.";
-        selectedRoom.broadcastMessage(disconnectMessage, client);
+        selectedRoom.broadcastMessage(disconnectMessage, client, true);
         selectedRoom.removeClient(client);
         client.state = ClientState::DEFAULT;
     }

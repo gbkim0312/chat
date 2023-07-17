@@ -11,7 +11,7 @@ public:
 
     void addClient(Client client);
     void removeClient(const Client &client);
-    void broadcastMessage(const std::string &message, const Client &sender);
+    void broadcastMessage(const std::string &message, const Client &sender, bool notice);
 
     std::string getName() const;
     int getIndex() const;
