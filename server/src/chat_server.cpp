@@ -224,7 +224,7 @@ private:
                   { return r1.getIndex() < r2.getIndex(); });
 
         // build string
-        std::string room_lists_string = "Choose Room from the followingList\n(/create to create new room)\n\n";
+        std::string room_lists_string = "Choose Room from the following List\n(/create to create new room)\n\n";
         for (const auto &room : rooms)
         {
             room_lists_string += fmt::format("{} | Name: {}\n", room.getIndex(), room.getName());
@@ -250,6 +250,7 @@ private:
         std::array<char, BUFFER_SIZE> buffer = {0};
         auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
         const std::string message = std::string(buffer.data(), bytes_received);
+
         client.state = ClientState::ROOM_SELECTED;
 
         if (bytes_received < 0 || message.empty())
@@ -286,6 +287,7 @@ private:
         std::array<char, BUFFER_SIZE> buffer = {0};
         auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
         const std::string message = std::string(buffer.data(), bytes_received);
+
         if (message.empty())
         {
             fmt::print("client {} is disconnected\n", client.username);
@@ -320,24 +322,25 @@ private:
 
     void startChatting(Client &client)
     {
+        // TODO: 예외처리 추가 필요?
         auto &selectedRoom = room_manager_.findRoomByIndex(client.room_index);
         const std::string enterMessage = client.username + " has entered the chat.";
         selectedRoom.broadcastMessage(enterMessage, client, true);
 
         while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
         {
+            // receive message from the client
             std::array<char, BUFFER_SIZE> buffer = {0};
             auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
             const std::string message = std::string(buffer.data(), bytes_received);
 
             // if the client is disconnected
-            if (bytes_received <= 0 || message == "/quit")
+            if (bytes_received <= 0 || message == "/quit" || message == "/q")
             {
                 client.state = ClientState::LEAVING;
                 break;
             }
-
-            if (message == "/back")
+            else if (message == "/back" || message == "/b")
             {
                 const std::string message = fmt::format("{} has left the chat.", client.username);
                 selectedRoom.broadcastMessage(message, client, true);
@@ -345,9 +348,21 @@ private:
                 client.state = ClientState::CONNECTED;
                 break;
             }
-
-            // broadcast the messages to the clients in the room
-            selectedRoom.broadcastMessage(message, client, false);
+            else if (message == "/participants" || message == "/p")
+            {
+                std::string client_lists;
+                auto clients = selectedRoom.getClients();
+                for (auto client : clients)
+                {
+                    client_lists += fmt::format(" - {}\n", client.username);
+                }
+                sendMessageToClient(client.socket, client_lists);
+            }
+            else
+            {
+                // broadcast the messages to the clients in the room
+                selectedRoom.broadcastMessage(message, client, false);
+            }
         }
     }
 
@@ -366,22 +381,22 @@ private:
         return (sendBytes > 0);
     }
 
-    static std::string recvMessageFromClient(int socket)
-    {
-        std::string message;
-        std::array<char, 1024> buffer = {0};
+    // static std::string recvMessageFromClient(int socket)
+    // {
+    //     std::string message;
+    //     std::array<char, 1024> buffer = {0};
 
-        auto bytes_recv = recv(socket, buffer.data(), 1024, 0);
-        if (bytes_recv < 0)
-        {
-            message = "/quit";
-        }
-        else
-        {
-            message = std::string(buffer.data(), bytes_recv);
-        }
-        return message;
-    }
+    //     auto bytes_recv = recv(socket, buffer.data(), 1024, 0);
+    //     if (bytes_recv < 0)
+    //     {
+    //         message = "/quit";
+    //     }
+    //     else
+    //     {
+    //         message = std::string(buffer.data(), bytes_recv);
+    //     }
+    //     return message;
+    // }
 
     int acceptClient() const
     {

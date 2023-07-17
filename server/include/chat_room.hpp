@@ -14,6 +14,7 @@ public:
     void broadcastMessage(const std::string &message, const Client &sender, bool notice);
 
     std::string getName() const;
+    std::vector<Client> getClients() const;
     int getIndex() const;
 
 private:

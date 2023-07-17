@@ -6,6 +6,7 @@
 #include <fmt/core.h>
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
 
@@ -49,6 +50,11 @@ void ChatRoom::broadcastMessage(const std::string &message, const Client &sender
             }
         }
     }
+}
+
+std::vector<Client> ChatRoom::getClients() const
+{
+    return clients_;
 }
 
 std::string ChatRoom::getName() const
