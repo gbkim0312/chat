@@ -8,6 +8,7 @@ enum class ClientState
     ROOM_LIST_SENT,
     ROOM_SELECTED,
     CHATTING,
+    LEAVING,
     DEFAULT
 };
 

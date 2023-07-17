@@ -1,7 +1,6 @@
 #include "chat_server.hpp"
 #include "client.hpp"
 #include "chat_room.hpp"
-// #include <spdlog/fmt/fmt.h>
 #include "chat_room_manager.hpp"
 #include <fmt/core.h>
 #include <unistd.h>
@@ -17,7 +16,7 @@
 #include <memory>
 #include <algorithm>
 #include <exception>
-// #include <sys/types.h>
+#include <sys/_endian.h> //htons
 
 namespace
 {
@@ -39,12 +38,7 @@ public:
         while (server_state_ == ServerState::RUNNING)
         {
             // accept clients
-            int client_socket = accept(server_socket_, nullptr, nullptr);
-            if (client_socket < 0)
-            {
-                handleError("Failed to accept client connection");
-                continue;
-            }
+            int client_socket = acceptClient();
 
             // get username from the client
             std::string username = getClientUserName(client_socket);
@@ -56,23 +50,20 @@ public:
             // create client object
             Client client = createClient(client_socket, username);
             client.state = ClientState::CONNECTED;
+
             // start clientHandler thread
             std::thread client_thread(&ChatServerImpl::handleClient, this, client);
-
-            // clients_.push_back(std::move(client));
             client_thread.detach();
             client_threads_.push_back(std::move(client_thread));
         }
     }
 
+    // Handle each client independently according to their state
     void handleClient(Client client)
     {
-        // ClientState client_state = ClientState::DEFAULT;
-
         while (server_state_ == ServerState::RUNNING)
         {
             const ClientState client_state = client.state;
-            fmt::print("{}", static_cast<int>(client_state));
 
             switch (client_state)
             {
@@ -88,7 +79,9 @@ public:
             case ClientState::CHATTING:
                 startChatting(client);
                 break;
-                // TODO: DISCONNECTED 상태 구현
+            case ClientState::LEAVING:
+                leaveRoom(client);
+                break;
             default:
                 break;
             }
@@ -103,8 +96,8 @@ public:
         {
             if (client_socket != sender_socket)
             {
-                auto sendBytes = send(client_socket, text.c_str(), text.size(), 0);
-                if (sendBytes < 0)
+                auto send_bytes = send(client_socket, text.c_str(), text.size(), 0);
+                if (send_bytes < 0)
                 {
                     handleError("Failed to send message to clients");
                 }
@@ -125,7 +118,7 @@ public:
         // set the address of the socket
         server_addr_.sin_family = AF_INET;
         server_addr_.sin_addr.s_addr = INADDR_ANY;
-        server_addr_.sin_port = htons(port_); // NOLINT
+        server_addr_.sin_port = htons(port_);
 
         // binding the socket and the address
         if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
@@ -300,21 +293,36 @@ public:
         {
             std::array<char, BUFFER_SIZE> buffer = {0};
             auto bytesReceived = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+            const std::string message = std::string(buffer.data(), bytesReceived);
 
             // if the client is disconnected
-            if (bytesReceived <= 0)
+            if (bytesReceived <= 0 || message == "/quit")
             {
-                const std::string disconnectMessage = client.username + " has left the chat.";
-                selectedRoom.broadcastMessage(disconnectMessage, client);
+                client.state = ClientState::LEAVING;
+                break;
+            }
+
+            if (message == "/back")
+            {
+                const std::string message = fmt::format("{} has left the chat.", client.username);
+                selectedRoom.broadcastMessage(message, client);
                 selectedRoom.removeClient(client);
-                client.state = ClientState::DEFAULT;
+                client.state = ClientState::CONNECTED;
                 break;
             }
 
             // broadcast the messages to the clients in the room
-            const std::string message = std::string(buffer.data(), bytesReceived);
             selectedRoom.broadcastMessage(message, client);
         }
+    }
+
+    void leaveRoom(Client &client)
+    {
+        auto &selectedRoom = room_manager_.findRoomByIndex(client.room_index);
+        const std::string disconnectMessage = client.username + " has left the chat.";
+        selectedRoom.broadcastMessage(disconnectMessage, client);
+        selectedRoom.removeClient(client);
+        client.state = ClientState::DEFAULT;
     }
 
     static bool sendMessageToClient(int socket, const std::string &message)
@@ -339,6 +347,16 @@ public:
             message = std::string(buffer.data(), bytes_recv);
         }
         return message;
+    }
+
+    int acceptClient() const
+    {
+        const int client_socket = accept(server_socket_, nullptr, nullptr);
+        if (client_socket < 0)
+        {
+            handleError("Failed to accept client connection");
+        }
+        return client_socket;
     }
 
 private:
