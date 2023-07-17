@@ -28,10 +28,6 @@ void ChatRoom::removeClient(const Client &client)
 void ChatRoom::broadcastMessage(const std::string &message, const Client &sender)
 {
     const std::string text = fmt::format("[{}] : {}", sender.username, message);
-    // for (const auto &client : clients_)
-    // {
-    //     fmt::print("send message to {}\n", client.username);
-    // }
     for (const auto &client : clients_)
     {
         if (client.socket != sender.socket)

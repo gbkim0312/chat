@@ -38,7 +38,6 @@ public:
             close(server_socket_);
             return false;
         }
-
         return true;
     }
 

@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include "spdlog/fmt/fmt.h"
 #include "chat_client.hpp"
 #include <iostream>
 #include <thread>
@@ -11,15 +10,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
-enum class ClientState
-{
-    CONNECTED,
-    ROOM_LIST_RECEIVED, // <--> ROOM_LIST_SENT
-    ROOM_SELECTED,
-    ROOM_JOINED,
-    CHATTING
-};
 
 class ChatClient
 {

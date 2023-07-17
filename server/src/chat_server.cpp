@@ -16,6 +16,7 @@
 #include <memory>
 #include <algorithm>
 #include <exception>
+#include <stdexcept>
 #include <sys/_endian.h> //htons
 
 namespace
@@ -32,7 +33,6 @@ public:
     {
         server_state_ = ServerState::RUNNING;
 
-        // create the server socket and bind with address structure
         configServer();
 
         while (server_state_ == ServerState::RUNNING)
@@ -58,53 +58,26 @@ public:
         }
     }
 
-    // Handle each client independently according to their state
-    void handleClient(Client client)
+    void stop()
     {
-        while (server_state_ == ServerState::RUNNING)
-        {
-            const ClientState client_state = client.state;
-
-            switch (client_state)
-            {
-            case ClientState::CONNECTED:
-                showRoomLists(client);
-                break;
-            case ClientState::ROOM_LIST_SENT:
-                getSelectedRoom(client);
-                break;
-            case ClientState::ROOM_SELECTED:
-                joinRoom(client);
-                break;
-            case ClientState::CHATTING:
-                startChatting(client);
-                break;
-            case ClientState::LEAVING:
-                leaveRoom(client);
-                break;
-            default:
-                break;
-            }
-        }
+        server_state_ = ServerState::STOP;
+        joinAllClientThread();
+        closeAllClientSockets();
+        close(server_socket_);
     }
 
-    void broadcastMessage(const std::string &message, const int &sender_socket, const std::string &username)
+    ServerState getState() const
     {
-        const std::string text = fmt::format("[{}] : {}", username, message);
-
-        for (auto client_socket : client_sockets_)
-        {
-            if (client_socket != sender_socket)
-            {
-                auto send_bytes = send(client_socket, text.c_str(), text.size(), 0);
-                if (send_bytes < 0)
-                {
-                    handleError("Failed to send message to clients");
-                }
-            }
-        }
+        return server_state_;
     }
 
+    void setPort(int port)
+    {
+        port_ = port;
+    }
+
+private:
+    // create the server socket and bind with address structure
     void configServer()
     {
         // create the server socket
@@ -146,23 +119,43 @@ public:
         room_manager_.createRoom("Room3", 2);
     }
 
-    void stop()
+    // Handle each client independently according to their state
+    void handleClient(Client client)
     {
-        server_state_ = ServerState::STOP;
-        joinAllClientThread();
-        closeAllClientSockets();
-        close(server_socket_);
+        while (server_state_ == ServerState::RUNNING)
+        {
+            const ClientState client_state = client.state;
+
+            switch (client_state)
+            {
+            case ClientState::CONNECTED:
+                sendRoomLists(client);
+                break;
+            case ClientState::ROOM_LIST_SENT:
+                recvSelectedRoom(client);
+                break;
+            case ClientState::ROOM_SELECTED:
+                joinRoom(client);
+                break;
+            case ClientState::CREATING_ROOM:
+                createNewRoom(client);
+                break;
+            case ClientState::CHATTING:
+                startChatting(client);
+                break;
+            case ClientState::LEAVING:
+                leaveRoom(client);
+                break;
+            default:
+                break;
+            }
+        }
     }
 
     static void handleError(const std::string &error_message)
     {
         fmt::print("runtime error: {}\n", error_message);
         // throw std::runtime_error(errorMessage);
-    }
-
-    ServerState getState() const
-    {
-        return server_state_;
     }
 
     void joinAllClientThread()
@@ -204,11 +197,6 @@ public:
         return username;
     }
 
-    void setPort(int port)
-    {
-        port_ = port;
-    }
-
     Client createClient(int client_socket, const std::string &username)
     {
         Client client;
@@ -219,7 +207,7 @@ public:
         return client;
     }
 
-    bool showRoomLists(Client &client)
+    bool sendRoomLists(Client &client)
     {
         auto rooms = room_manager_.getRooms();
 
@@ -236,10 +224,10 @@ public:
                   { return r1.getIndex() < r2.getIndex(); });
 
         // build string
-        std::string room_lists_string = "Choose Room from the followingList:\n\n";
+        std::string room_lists_string = "Choose Room from the followingList\n(/create to create new room)\n\n";
         for (const auto &room : rooms)
         {
-            room_lists_string += fmt::format("Room Index: {}, Name: {}\n", room.getIndex(), room.getName());
+            room_lists_string += fmt::format("{} | Name: {}\n", room.getIndex(), room.getName());
         }
 
         // send room lists
@@ -257,10 +245,53 @@ public:
         }
     }
 
-    static void getSelectedRoom(Client &client)
+    static void recvSelectedRoom(Client &client)
     {
-        client.room_index = std::stoi(recvMessageFromClient(client.socket));
-        client.state = ClientState::ROOM_SELECTED;
+        std::array<char, BUFFER_SIZE> buffer = {0};
+        auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+        const std::string message = std::string(buffer.data(), bytes_received);
+
+        if (bytes_received < 0 || message.empty())
+        {
+            fmt::print("Client {} is disconnected\n", client.username);
+            client.state = ClientState::DEFAULT;
+        }
+        else if (message == "/create")
+        {
+            client.state = ClientState::CREATING_ROOM;
+        }
+        else
+        {
+            try
+            {
+                client.room_index = std::stoi(message);
+            }
+            catch (std::invalid_argument &e)
+            {
+                sendMessageToClient(client.socket, "Wrong input. Choose again");
+                client.state = ClientState::ROOM_LIST_SENT;
+            }
+            client.state = ClientState::ROOM_SELECTED;
+        }
+    }
+
+    void createNewRoom(Client &client)
+    {
+        sendMessageToClient(client.socket, "Input room name");
+
+        std::array<char, BUFFER_SIZE> buffer = {0};
+        auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+        const std::string message = std::string(buffer.data(), bytes_received);
+        if (message.empty())
+        {
+            fmt::print("client {} is disconnected\n", client.username);
+            client.state = ClientState::DEFAULT;
+        }
+        else
+        {
+            room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size()));
+            client.state = ClientState::CONNECTED;
+        }
     }
 
     void joinRoom(Client &client)
@@ -292,11 +323,11 @@ public:
         while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
         {
             std::array<char, BUFFER_SIZE> buffer = {0};
-            auto bytesReceived = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
-            const std::string message = std::string(buffer.data(), bytesReceived);
+            auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+            const std::string message = std::string(buffer.data(), bytes_received);
 
             // if the client is disconnected
-            if (bytesReceived <= 0 || message == "/quit")
+            if (bytes_received <= 0 || message == "/quit")
             {
                 client.state = ClientState::LEAVING;
                 break;
@@ -334,8 +365,7 @@ public:
     static std::string recvMessageFromClient(int socket)
     {
         std::string message;
-        std::array<char, 1024>
-            buffer = {0};
+        std::array<char, 1024> buffer = {0};
 
         auto bytes_recv = recv(socket, buffer.data(), 1024, 0);
         if (bytes_recv < 0)
@@ -359,7 +389,6 @@ public:
         return client_socket;
     }
 
-private:
     sockaddr_in server_addr_{};
     int port_ = 0;
     int server_socket_ = 0;

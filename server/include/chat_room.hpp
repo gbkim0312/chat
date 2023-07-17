@@ -20,4 +20,5 @@ private:
     std::vector<Client> clients_;
     std::string name_;
     int index_;
+    // TODO: Client owner; - 생성한사람이 지울 수 있도록
 };

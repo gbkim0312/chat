@@ -6,6 +6,7 @@ enum class ClientState
 {
     CONNECTED,
     ROOM_LIST_SENT,
+    CREATING_ROOM,
     ROOM_SELECTED,
     CHATTING,
     LEAVING,
