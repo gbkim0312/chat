@@ -1,9 +1,11 @@
 #include "chat_room_manager.hpp"
 #include "chat_room.hpp"
 #include <string>
-#include <memory>
+#include <stdexcept>
+// #include <memory>
 #include <vector>
 #include <utility>
+// #include <fmt/core.h>
 
 void ChatRoomManager::createDefaultRooms()
 {
@@ -17,25 +19,25 @@ void ChatRoomManager::createDefaultRooms()
 
 void ChatRoomManager::createRoom(const std::string &name, int index)
 {
-    auto room = std::make_unique<ChatRoom>(name, index);
+    auto room = ChatRoom(name, index);
     rooms_.push_back(std::move(room));
 }
 
-std::shared_ptr<ChatRoom> ChatRoomManager::findRoomByIndex(int index)
+ChatRoom &ChatRoomManager::findRoomByIndex(int index)
 {
-    for (auto const &room : rooms_)
+    for (auto &room : rooms_)
     {
-        if (room->getIndex() == index)
+        if (room.getIndex() == index)
         {
             return room;
         }
     }
-    return nullptr;
+    // Throw room not found exception
+    throw std::runtime_error("Room not found. Choose again");
 }
 // Reference 전달
 
-const std::vector<std::shared_ptr<ChatRoom>> &ChatRoomManager::getRooms()
+const std::vector<ChatRoom> &ChatRoomManager::getRooms()
 {
     return rooms_;
 }
-// Reference 전달

@@ -5,14 +5,14 @@
 #include <sys/socket.h>
 #include <fmt/core.h>
 #include <algorithm>
+#include <utility>
 
 ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
 
-void ChatRoom::addClient(Client &client)
+void ChatRoom::addClient(Client client)
 {
-    clients_.push_back(client);
+    clients_.push_back(std::move(client));
 }
-// move로 념거주기,
 
 void ChatRoom::removeClient(const Client &client)
 {
