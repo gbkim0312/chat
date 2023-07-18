@@ -37,9 +37,3 @@
     $ ./client {USERNAME} {SERVER_IP} {PORT}
 
 
-## TODO
-
-  * Add client id and nickname
-
-
-
