@@ -34,7 +34,7 @@
 
     $ cd {PROJECT_DIR}/build/client
 
-    $ ./client {SERVER_IP} {PORT}
+    $ ./client {USERNAME} {SERVER_IP} {PORT}
 
 
 ## TODO

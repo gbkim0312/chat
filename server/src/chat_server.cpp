@@ -194,7 +194,7 @@ private:
         return username;
     }
 
-    Client createClient(int client_socket, const std::string &username)
+    static Client createClient(int client_socket, const std::string &username)
     {
         Client client;
         // client.id = ++client_id_;
@@ -401,7 +401,7 @@ private:
                 auto clients = selectedRoom.getClients();
                 for (auto c : clients)
                 {
-                    if (c.username == client.username)
+                    if (c.socket == client.socket)
                     {
                         client_lists += fmt::format(" - {} (me)\n", c.username);
                     }
