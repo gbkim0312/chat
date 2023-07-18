@@ -300,7 +300,6 @@ private:
         }
         else
         {
-            // TODO: 방 삭제 시, index 맞지 않는 부분 발생 가능. 수정 필요
             room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size()), client); // rooms의 size의 index 부여
             client.state = ClientState::CONNECTED;
         }
