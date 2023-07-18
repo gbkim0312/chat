@@ -112,16 +112,16 @@ private:
             fmt::print("Server started. Listening on port {}\n", port_);
         }
 
-        room_manager_.createDefaultRooms();
+        room_manager_.createDefaultRooms(3);
     }
 
     // Handle each client independently according to their state
     void handleClient(Client client)
     {
+        // bool stop = false;
         while (server_state_ == ServerState::RUNNING)
         {
             const ClientState client_state = client.state;
-
             switch (client_state)
             {
             case ClientState::CONNECTED:
@@ -145,6 +145,9 @@ private:
             case ClientState::LEAVING:
                 leaveRoom(client);
                 break;
+            // case ClientState::DEFAULT:
+            //     stop = true;
+            //     break;
             default:
                 break;
             }

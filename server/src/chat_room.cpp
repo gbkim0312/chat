@@ -12,7 +12,6 @@ ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_
 
 void ChatRoom::addClient(Client client)
 {
-
     clients_.push_back(std::move(client));
 }
 
@@ -39,14 +38,19 @@ void ChatRoom::broadcastMessage(const std::string &message, const Client &sender
     {
         if (client.socket != sender.socket)
         {
-            auto sendBytes = send(client.socket, text.c_str(), text.size(), 0);
+            auto send_bytes = send(client.socket, text.c_str(), text.size(), 0);
             fmt::print("send message to {}\n", client.username);
-            if (sendBytes < 0)
+            if (send_bytes < 0)
             {
                 fmt::print("Failed to send message to clients");
             }
         }
     }
+}
+
+void ChatRoom::setIndex(int index)
+{
+    index_ = index;
 }
 
 std::vector<Client> ChatRoom::getClients() const

@@ -18,12 +18,12 @@ public:
     int getIndex() const;
     void setOwner(Client client);
     Client getOwner() const;
+    void setIndex(int index);
 
 private:
     std::vector<Client> clients_;
     std::string name_;
     int index_;
     // std::mutex clients_mutex_;
-    // TODO: Client owner; - 생성한사람이 지울 수 있도록
     Client owner_;
 };
