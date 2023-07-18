@@ -39,7 +39,7 @@ void ChatRoom::broadcastMessage(const std::string &message, const Client &sender
         if (client.socket != sender.socket)
         {
             auto send_bytes = send(client.socket, text.c_str(), text.size(), 0);
-            fmt::print("send message to {}\n", client.username);
+            // fmt::print("send message to {}\n", client.username);
             if (send_bytes < 0)
             {
                 fmt::print("Failed to send message to clients");

@@ -183,15 +183,11 @@ private:
 
     static std::string getClientUserName(int client_socket)
     {
-        std::array<char, 1024> buffer = {0};
-
-        auto bytes_recv = recv(client_socket, buffer.data(), 1024, 0);
-        if (bytes_recv == -1)
+        std::string username = recvMessageFromClient(client_socket);
+        if (username.empty())
         {
             handleError("Failed to receive message");
         }
-
-        std::string username = std::string(buffer.data(), bytes_recv);
         username.erase(0, username.find_first_not_of(" \t\r\n"));
         username.erase(username.find_last_not_of(" \t\r\n") + 1);
 
@@ -201,7 +197,7 @@ private:
     Client createClient(int client_socket, const std::string &username)
     {
         Client client;
-        client.id = ++client_id_;
+        // client.id = ++client_id_;
         client.socket = client_socket;
         client.state = ClientState::CONNECTED;
         client.username = username;
@@ -215,7 +211,10 @@ private:
         // TODO: 비어있을 때 처리 추가 필요
         if (rooms.empty())
         {
-            fmt::print("room is empty\n");
+            // fmt::print("room is empty\n");
+            const std::string message = "No rooms. do you want to create new room?";
+            sendMessageToClient(client.socket, message);
+
             client.state = ClientState::CONNECTED;
             return false;
         };
@@ -248,13 +247,10 @@ private:
 
     static void recvSelectedRoom(Client &client)
     {
-        std::array<char, BUFFER_SIZE> buffer = {0};
-        auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
-        const std::string message = std::string(buffer.data(), bytes_received);
-
+        const std::string message = recvMessageFromClient(client.socket);
         client.state = ClientState::ROOM_SELECTED;
 
-        if (bytes_received < 0 || message.empty())
+        if (message.empty())
         {
             fmt::print("Client {} is disconnected\n", client.username);
             client.state = ClientState::DEFAULT;
@@ -288,10 +284,7 @@ private:
     void createNewRoom(Client &client)
     {
         sendMessageToClient(client.socket, "Input room name: ");
-
-        std::array<char, BUFFER_SIZE> buffer = {0};
-        auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
-        const std::string message = std::string(buffer.data(), bytes_received);
+        const std::string message = recvMessageFromClient(client.socket);
 
         if (message.empty())
         {
@@ -386,12 +379,10 @@ private:
         while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
         {
             // receive message from the client
-            std::array<char, BUFFER_SIZE> buffer = {0};
-            auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
-            const std::string message = std::string(buffer.data(), bytes_received);
+            const std::string message = recvMessageFromClient(client.socket);
 
             // if the client is disconnected
-            if (bytes_received <= 0 || message == "/quit" || message == "/q")
+            if (message.empty() || message == "/quit" || message == "/q")
             {
                 client.state = ClientState::LEAVING;
                 break;
@@ -451,6 +442,15 @@ private:
             handleError("Failed to accept client connection");
         }
         return client_socket;
+    }
+
+    static std::string recvMessageFromClient(int client_socket)
+    {
+        std::array<char, BUFFER_SIZE> buffer = {0};
+        auto bytes_received = recv(client_socket, buffer.data(), BUFFER_SIZE, 0);
+        const std::string message = std::string(buffer.data(), bytes_received);
+
+        return message;
     }
 
     sockaddr_in server_addr_{};

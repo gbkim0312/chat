@@ -16,7 +16,7 @@ enum class ClientState
 
 struct Client
 {
-    int id = 0;
+    // int id = 0; //socket이 id 대신함
     int socket = -1;
     ClientState state = ClientState::DEFAULT;
     std::string username = "";
