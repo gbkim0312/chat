@@ -7,6 +7,7 @@ enum class ClientState
     CONNECTED,
     ROOM_LIST_SENT,
     CREATING_ROOM,
+    REMOVING_ROOM,
     ROOM_SELECTED,
     CHATTING,
     LEAVING,
@@ -15,9 +16,9 @@ enum class ClientState
 
 struct Client
 {
-    int id;
-    int socket;
-    ClientState state;
-    std::string username;
+    int id = 0;
+    int socket = -1;
+    ClientState state = ClientState::DEFAULT;
+    std::string username = "";
     int room_index = 1;
 };

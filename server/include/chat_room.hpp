@@ -16,6 +16,8 @@ public:
     std::string getName() const;
     std::vector<Client> getClients() const;
     int getIndex() const;
+    void setOwner(Client client);
+    Client getOwner() const;
 
 private:
     std::vector<Client> clients_;
@@ -23,5 +25,5 @@ private:
     int index_;
     // std::mutex clients_mutex_;
     // TODO: Client owner; - 생성한사람이 지울 수 있도록
-    Client owner;
+    Client owner_;
 };

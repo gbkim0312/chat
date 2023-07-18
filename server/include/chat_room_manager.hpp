@@ -9,8 +9,9 @@ class ChatRoomManager
 {
 public:
     // ChatRoomManager();
-    void createRoom(const std::string &roomName, int roomIndex);
+    void createRoom(const std::string &roomName, int roomIndex, const Client &owner);
     void createDefaultRooms();
+    void removeRoom(int room_index);
     ChatRoom &findRoomByIndex(int index);
     const std::vector<ChatRoom> &getRooms();
 

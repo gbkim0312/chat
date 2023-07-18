@@ -19,8 +19,6 @@
 #include <stdexcept>
 #include <sys/_endian.h> //htons
 
-// TODO: Mutex 추가 필요
-
 namespace
 {
     constexpr int BUFFER_SIZE = 1024;
@@ -114,11 +112,7 @@ private:
             fmt::print("Server started. Listening on port {}\n", port_);
         }
 
-        // create default rooms
-        // TODO: User가 room을 만들 수 있도록 해야함
-        room_manager_.createRoom("Room1", 0);
-        room_manager_.createRoom("Room2", 1);
-        room_manager_.createRoom("Room3", 2);
+        room_manager_.createDefaultRooms();
     }
 
     // Handle each client independently according to their state
@@ -141,6 +135,9 @@ private:
                 break;
             case ClientState::CREATING_ROOM:
                 createNewRoom(client);
+                break;
+            case ClientState::REMOVING_ROOM:
+                removeRoom(client);
                 break;
             case ClientState::CHATTING:
                 startChatting(client);
@@ -192,7 +189,6 @@ private:
         }
 
         std::string username = std::string(buffer.data(), bytes_recv);
-
         username.erase(0, username.find_first_not_of(" \t\r\n"));
         username.erase(username.find_last_not_of(" \t\r\n") + 1);
 
@@ -229,7 +225,7 @@ private:
         std::string room_lists_string = "Choose Room from the following List\n(/create to create new room)\n\n";
         for (const auto &room : rooms)
         {
-            room_lists_string += fmt::format("{} | Name: {}\n", room.getIndex(), room.getName());
+            room_lists_string += fmt::format("{} | {}\n", room.getIndex(), room.getName());
         }
 
         // send room lists
@@ -268,6 +264,10 @@ private:
         {
             client.state = ClientState::CONNECTED;
         }
+        else if (message == "/remove" || message == "/rm")
+        {
+            client.state = ClientState::REMOVING_ROOM;
+        }
         else
         {
             try
@@ -276,7 +276,7 @@ private:
             }
             catch (std::invalid_argument &e)
             {
-                sendMessageToClient(client.socket, "Wrong input. Choose again");
+                sendMessageToClient(client.socket, "Wrong input. Choose again: ");
                 client.state = ClientState::ROOM_LIST_SENT;
             }
         }
@@ -284,7 +284,7 @@ private:
 
     void createNewRoom(Client &client)
     {
-        sendMessageToClient(client.socket, "Input room name");
+        sendMessageToClient(client.socket, "Input room name: ");
 
         std::array<char, BUFFER_SIZE> buffer = {0};
         auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
@@ -298,8 +298,59 @@ private:
         else
         {
             // TODO: 방 삭제 시, index 맞지 않는 부분 발생 가능. 수정 필요
-            room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size())); // rooms의 size의 index 부여
+            room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size()), client); // rooms의 size의 index 부여
             client.state = ClientState::CONNECTED;
+        }
+    }
+
+    void removeRoom(Client &client)
+    {
+        sendMessageToClient(client.socket, "Input room index to remove ('/back' to go back) ");
+        std::array<char, BUFFER_SIZE> buffer = {0};
+
+        auto bytes_received = recv(client.socket, buffer.data(), BUFFER_SIZE, 0);
+        std::string message = std::string(buffer.data(), bytes_received);
+
+        if (message.empty())
+        {
+            client.state = ClientState::DEFAULT;
+        }
+        else if (message == "/back" || message == "/b")
+        {
+            client.state = ClientState::CONNECTED;
+        }
+        else
+        {
+            try
+            {
+                const int index = std::stoi(message);
+                auto selected_room = room_manager_.findRoomByIndex(index);
+
+                // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능)
+                // Socket으로 대체해도 될까?
+                if (selected_room.getOwner().socket == client.socket)
+                {
+                    room_manager_.removeRoom(index);
+                    message = "Room removed.\n";
+                    client.state = ClientState::CONNECTED;
+                }
+                else
+                {
+                    message = "You have no permission. Choose again\n\n";
+                    client.state = ClientState::REMOVING_ROOM;
+                }
+                sendMessageToClient(client.socket, message);
+            }
+            catch (std::invalid_argument &e)
+            {
+                sendMessageToClient(client.socket, "invalid input. Choose again\n\n");
+                client.state = ClientState::REMOVING_ROOM;
+            }
+            catch (std::runtime_error &e)
+            {
+                sendMessageToClient(client.socket, "Room not found. choose again\n\n");
+                client.state = ClientState::REMOVING_ROOM;
+            }
         }
     }
 
@@ -310,7 +361,7 @@ private:
         {
             auto &selectedRoom = room_manager_.findRoomByIndex(client.room_index);
             client.state = ClientState::CHATTING;
-            const std::string message = fmt::format("You have joined the room {}", client.room_index);
+            const std::string message = fmt::format("You have joined the room {}\n", client.room_index);
             sendMessageToClient(client.socket, message);
             selectedRoom.addClient(client);
         }
@@ -370,7 +421,6 @@ private:
             }
             else
             {
-                // broadcast the messages to the clients in the room
                 selectedRoom.broadcastMessage(message, client);
             }
         }

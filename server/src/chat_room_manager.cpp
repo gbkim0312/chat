@@ -1,28 +1,27 @@
 #include "chat_room_manager.hpp"
 #include "chat_room.hpp"
+#include "client.hpp"
 #include <string>
 #include <stdexcept>
-// #include <memory>
 #include <vector>
 #include <utility>
 #include <mutex>
-// #include <fmt/core.h>
+#include <algorithm>
+#include <fmt/core.h>
 
-void ChatRoomManager::createDefaultRooms()
-{
-    if (default_room_)
-    {
-        createRoom("Room 1", 0);
-        createRoom("Room 2", 1);
-        createRoom("Room 3", 2);
-    }
-}
-
-void ChatRoomManager::createRoom(const std::string &name, int index)
+void ChatRoomManager::createRoom(const std::string &name, int index, const Client &owner)
 {
     auto room = ChatRoom(name, index);
+    room.setOwner(owner);
     std::lock_guard<std::mutex> const lock_guard(rooms_mutex_);
     rooms_.push_back(std::move(room));
+}
+
+void ChatRoomManager::removeRoom(int room_index)
+{
+    rooms_.erase(std::remove_if(rooms_.begin(), rooms_.end(), [room_index](const ChatRoom &chat_room)
+                                { return chat_room.getIndex() == room_index; }),
+                 rooms_.end());
 }
 
 ChatRoom &ChatRoomManager::findRoomByIndex(int index)
@@ -35,12 +34,21 @@ ChatRoom &ChatRoomManager::findRoomByIndex(int index)
             return room;
         }
     }
-    // Throw room not found exception
-    throw std::runtime_error("Room not found. Choose again");
+    throw std::runtime_error("Room not found.");
 }
-// Reference 전달
 
 const std::vector<ChatRoom> &ChatRoomManager::getRooms()
 {
     return rooms_;
+}
+
+void ChatRoomManager::createDefaultRooms()
+{
+    std::string room_name;
+
+    for (int i = 0; i < 4; i++)
+    {
+        room_name = fmt::format("Default Room {}", i);
+        rooms_.push_back(ChatRoom(room_name, i));
+    }
 }

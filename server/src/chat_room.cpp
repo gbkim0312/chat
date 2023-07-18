@@ -18,13 +18,9 @@ void ChatRoom::addClient(Client client)
 
 void ChatRoom::removeClient(const Client &client)
 {
-    auto it = std::find_if(clients_.begin(), clients_.end(), [&client](const Client &c)
-                           { return c.socket == client.socket; });
-
-    if (it != clients_.end())
-    {
-        clients_.erase(it);
-    }
+    clients_.erase(std::remove_if(clients_.begin(), clients_.end(), [&client](const Client &c)
+                                  { return c.socket == client.socket; }),
+                   clients_.end());
 }
 
 void ChatRoom::broadcastMessage(const std::string &message, const Client &sender, bool is_notice)
@@ -66,4 +62,14 @@ std::string ChatRoom::getName() const
 int ChatRoom::getIndex() const
 {
     return index_;
+}
+
+void ChatRoom::setOwner(Client client)
+{
+    owner_ = std::move(client);
+}
+
+Client ChatRoom::getOwner() const
+{
+    return owner_;
 }
