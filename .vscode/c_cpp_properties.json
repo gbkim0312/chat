@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/server/include",
-                "${workspaceFolder}/client/include"
+                "${workspaceFolder}/client/include",
+                "${workspaceFolder}/server/include"
             ],
             "defines": [],
             "macFrameworkPath": [

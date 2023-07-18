@@ -1,12 +1,10 @@
 #include <thread>
 #include <chrono>
 #include "chat_client.hpp"
-// #include <spdlog/fmt/fmt.h>
 #include <fmt/core.h>
 #include <string>
 #include <cstdint>
 #include <exception>
-#include <iostream>
 
 int main(int argc, char *argv[]) // 어디서 예외를 던지는지?
 {
@@ -43,6 +41,6 @@ int main(int argc, char *argv[]) // 어디서 예외를 던지는지?
     }
     catch (const std::exception &e)
     {
-        std::cerr << e.what() << '\n';
+        fmt::println(e.what());
     }
 }

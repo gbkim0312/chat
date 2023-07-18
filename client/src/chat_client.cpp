@@ -9,7 +9,6 @@
 #include <memory>
 #include <utility>
 
-// #include <spdlog/fmt/fmt.h>
 #include <fmt/core.h>
 #include <iostream>
 #include <arpa/inet.h>
@@ -39,7 +38,6 @@ public:
             close(server_socket_);
             return false;
         }
-
         return true;
     }
 
