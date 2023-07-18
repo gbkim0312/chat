@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <sys/_endian.h> //htons
 
+// TODO: Mutex 추가 필요
+
 namespace
 {
     constexpr int BUFFER_SIZE = 1024;
@@ -295,7 +297,8 @@ private:
         }
         else
         {
-            room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size()));
+            // TODO: 방 삭제 시, index 맞지 않는 부분 발생 가능. 수정 필요
+            room_manager_.createRoom(message, static_cast<int>(room_manager_.getRooms().size())); // rooms의 size의 index 부여
             client.state = ClientState::CONNECTED;
         }
     }
@@ -352,16 +355,23 @@ private:
             {
                 std::string client_lists;
                 auto clients = selectedRoom.getClients();
-                for (auto client : clients)
+                for (auto c : clients)
                 {
-                    client_lists += fmt::format(" - {}\n", client.username);
+                    if (c.username == client.username)
+                    {
+                        client_lists += fmt::format(" - {} (me)\n", c.username);
+                    }
+                    else
+                    {
+                        client_lists += fmt::format(" - {}\n", c.username);
+                    }
                 }
                 sendMessageToClient(client.socket, client_lists);
             }
             else
             {
                 // broadcast the messages to the clients in the room
-                selectedRoom.broadcastMessage(message, client, false);
+                selectedRoom.broadcastMessage(message, client);
             }
         }
     }
@@ -381,23 +391,6 @@ private:
         return (sendBytes > 0);
     }
 
-    // static std::string recvMessageFromClient(int socket)
-    // {
-    //     std::string message;
-    //     std::array<char, 1024> buffer = {0};
-
-    //     auto bytes_recv = recv(socket, buffer.data(), 1024, 0);
-    //     if (bytes_recv < 0)
-    //     {
-    //         message = "/quit";
-    //     }
-    //     else
-    //     {
-    //         message = std::string(buffer.data(), bytes_recv);
-    //     }
-    //     return message;
-    // }
-
     int acceptClient() const
     {
         const int client_socket = accept(server_socket_, nullptr, nullptr);
@@ -416,7 +409,6 @@ private:
     std::mutex client_mutex_;
     ServerState server_state_ = ServerState::STOP;
     std::vector<std::thread> client_threads_;
-    // std::vector<Client> clients_;
     int client_id_ = 0;
     ChatRoomManager room_manager_;
 };

@@ -12,6 +12,7 @@ ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_
 
 void ChatRoom::addClient(Client client)
 {
+
     clients_.push_back(std::move(client));
 }
 

@@ -3,6 +3,7 @@
 #include "chat_room.hpp"
 #include <vector>
 #include <memory>
+#include <mutex>
 
 class ChatRoomManager
 {
@@ -16,4 +17,5 @@ public:
 private:
     std::vector<ChatRoom> rooms_;
     bool default_room_ = false;
+    std::mutex rooms_mutex_;
 };
