@@ -14,13 +14,11 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    int port = atoi(argv[1]); // NOLINT
+    int port = std::stoi(argv[1]); // NOLINT
     ChatServer chat_server(port);
 
     ServerState server_state = ServerState::STOP;
     uint8_t error_count = 0;
-
-    // signal(SIGINT, signalHandler);
 
     while (true)
     {

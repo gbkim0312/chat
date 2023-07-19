@@ -48,12 +48,32 @@ void ChatRoom::broadcastMessage(const std::string &message, const Client &sender
     }
 }
 
+bool ChatRoom::sendParticipantsList(int client_socket)
+{
+    std::string client_list_str;
+
+    for (auto client : clients_)
+    {
+        if (client.socket == client_socket)
+        {
+            client_list_str += fmt::format(" - {} (me)\n", client.username);
+        }
+        else
+        {
+            client_list_str += fmt::format(" - {}\n", client.username);
+        }
+    }
+
+    auto send_bytes = send(client_socket, client_list_str.c_str(), client_list_str.size(), 0);
+    return (send_bytes > 0);
+}
+
 void ChatRoom::setIndex(int index)
 {
     index_ = index;
 }
 
-std::vector<Client> ChatRoom::getClients() const
+std::vector<Client> &ChatRoom::getClients()
 {
     return clients_;
 }

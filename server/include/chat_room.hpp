@@ -12,9 +12,10 @@ public:
     void addClient(Client client);
     void removeClient(const Client &client);
     void broadcastMessage(const std::string &message, const Client &sender, bool is_notice = false);
+    bool sendParticipantsList(int client_socket);
 
     std::string getName() const;
-    std::vector<Client> getClients() const;
+    std::vector<Client> &getClients();
     int getIndex() const;
     void setOwner(Client client);
     Client getOwner() const;
