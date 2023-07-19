@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+// state변경할 때 어떤 state에서 변경되었는지를
+
 ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
 
 void ChatRoom::addClient(Client client)

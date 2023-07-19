@@ -73,15 +73,34 @@ private:
         while (is_running_)
         {
             auto bytes_recv = recv(server_socket_, buffer.data(), 1024, 0);
-            if (bytes_recv == -1)
-            {
-                handleError("Fail to receive message from the server");
-                break;
-            }
-            else if (bytes_recv == 0)
+            const std::string message = std::string(buffer.data(), bytes_recv);
+
+            // if (bytes_recv == -1)
+            // {
+            //     handleError("Fail to receive message from the server");
+            //     break;
+            // }
+            // else if (bytes_recv == 0)
+            // {
+            //     handleError("Disconnected from the server");
+            //     break;
+            // }
+            // else
+            // {
+            //     fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
+            // }
+
+            if (message.empty())
             {
                 handleError("Disconnected from the server");
                 break;
+            }
+            // TODO: 예외처리 추가
+            else if (message == "[NOTICE] : Room Closed")
+            {
+                fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
+                const std::string message = "/back";
+                send(server_socket_, message.c_str(), message.size(), 0);
             }
             else
             {

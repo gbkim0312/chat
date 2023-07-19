@@ -34,6 +34,7 @@ public:
         server_state_ = ServerState::RUNNING;
 
         configServer();
+        admin_.username = "ADMIN";
 
         while (server_state_ == ServerState::RUNNING)
         {
@@ -164,12 +165,9 @@ private:
     {
         auto rooms = room_manager_.getRooms();
 
-        // TODO: 비어있을 때 처리 추가 필요
         if (rooms.empty())
         {
-            // fmt::print("room is empty\n");
             sendMessageToClient(client.socket, "No rooms. do you want to create new room? (y|n)");
-            // message.clear();
             const std::string message = recvMessageFromClient(client.socket);
             if (message.empty())
             {
@@ -224,6 +222,11 @@ private:
         if (message.empty())
         {
             client.state = ClientState::DISCONNECTED;
+        }
+        else if (message == "/help" || message == "/h")
+        {
+            sendMessageToClient(client.socket, "command list: /help /create /reload /remove");
+            client.state = ClientState::ROOM_LIST_SENT;
         }
         else if (message == "/create")
         {
@@ -289,9 +292,10 @@ private:
 
                 // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능)
                 // Socket으로 대체해도 될까? -> 문제가 있을듯
+                // 방을 생성한 사람만 지울 수 있도록
                 if (selected_room.getOwner().socket == client.socket)
                 {
-                    selected_room.broadcastMessage("Room Closed", client, true);
+                    selected_room.broadcastMessage("Room Closed", admin_, true);
                     room_manager_.removeRoom(index);
                     message = "Room removed.\n";
                     client.state = ClientState::CONNECTED;
@@ -340,7 +344,7 @@ private:
     {
         // TODO: 예외처리 추가 필요?
         auto &selected_room = room_manager_.findRoomByIndex(client.room_index);
-        const std::string enterMessage = client.username + " has entered the chat.";
+        const std::string enterMessage = fmt::format("{} has joined the room", client.username);
         selected_room.broadcastMessage(enterMessage, client, true);
 
         while (server_state_ == ServerState::RUNNING && client.state == ClientState::CHATTING)
@@ -482,6 +486,7 @@ private:
     std::vector<std::thread> client_threads_;
     int client_id_ = 0;
     ChatRoomManager room_manager_;
+    Client admin_;
 };
 
 ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
