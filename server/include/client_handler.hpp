@@ -7,9 +7,17 @@
 class ClientHandler
 {
 public:
-    ClientState onClientTrigger(Client &client, ChatRoomManager &room_manager, ClientTrigger trigger);
+    ClientHandler(ClientTrigger initial_trigger);
+    ClientState onClientTrigger(Client &client, ChatRoomManager &room_manager);
+    void setTrigger(ClientTrigger trigger);
 
 private:
-    static std::string recvMessageFromClient(int client_socket);
-    static bool sendMessageToClient(int socket, const std::string &message);
+    ClientTrigger trigger_;
+    ClientState sendOption(Client &client, ChatRoomManager &room_manager);
+    ClientState recvOption(Client &client, ChatRoomManager &room_manager);
+    ClientState joinRoom(Client &client, ChatRoomManager &room_manager);
+    ClientState startChatting(Client &client, ChatRoomManager &room_manager);
+    ClientState createNewRoom(Client &client, ChatRoomManager &room_manager);
+    ClientState removeRoom(Client &client, ChatRoomManager &room_manager);
+    ClientState leaveRoom(Client &client, ChatRoomManager &room_manager);
 };

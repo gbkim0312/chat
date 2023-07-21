@@ -8,10 +8,8 @@ class ChatRoomManager;
 enum class ClientState
 {
     CONNECTED,
-    ROOM_LIST_SENT,
-    CREATING_ROOM,
-    REMOVING_ROOM,
-    ROOM_SELECTED,
+    OPTION_SENT,
+    OTPION_SELECTED,
     CHATTING,
     LEAVING,
     DISCONNECTED,
@@ -21,11 +19,12 @@ enum class ClientState
 enum class ClientTrigger
 {
     SEND_ROOMS,
-    RECV_ROOMS,
+    RECV_OPTION,
     JOIN_ROOM,
     CREATE_ROOM,
     REMOVE_ROOM,
     START_CHAT,
+    LEAVE,
     DISCONNECT
 };
 
