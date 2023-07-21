@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     src/chat_server.cpp
     src/chat_room.cpp
     src/chat_room_manager.cpp
+    src/client_handler.cpp
     src/main.cpp
 )
 

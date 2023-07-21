@@ -1,6 +1,9 @@
 #pragma once
-
+#include <map>
 #include <string>
+#include <functional>
+
+class ChatRoomManager;
 
 enum class ClientState
 {
@@ -13,6 +16,17 @@ enum class ClientState
     LEAVING,
     DISCONNECTED,
     DEFAULT
+};
+
+enum class ClientTrigger
+{
+    SEND_ROOMS,
+    RECV_ROOMS,
+    JOIN_ROOM,
+    CREATE_ROOM,
+    REMOVE_ROOM,
+    START_CHAT,
+    DISCONNECT
 };
 
 struct Client

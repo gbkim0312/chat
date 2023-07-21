@@ -18,6 +18,7 @@
 #include <exception>
 #include <stdexcept>
 #include <sys/_endian.h> //htons
+#include <client_handler.hpp>
 
 namespace
 {
@@ -116,48 +117,62 @@ private:
         room_manager_.createDefaultRooms(3);
     }
 
-    // Handle each client independently according to their state
+    // // Handle each client independently according to their state
+    // void handleClient(Client client)
+    // {
+    //     // bool stop = false;
+    //     while (server_state_ == ServerState::RUNNING)
+    //     {
+    //         const ClientState client_state = client.state;
+    //         if (client_state == ClientState::DEFAULT)
+    //         {
+    //             break;
+    //         }
+
+    //         switch (client_state)
+    //         {
+    //         case ClientState::CONNECTED:
+    //             sendRoomLists(client);
+    //             break;
+    //         case ClientState::ROOM_LIST_SENT:
+    //             recvSelectedRoom(client);
+    //             break;
+    //         case ClientState::ROOM_SELECTED:
+    //             joinRoom(client);
+    //             break;
+    //         case ClientState::CREATING_ROOM:
+    //             createNewRoom(client);
+    //             break;
+    //         case ClientState::REMOVING_ROOM:
+    //             removeRoom(client);
+    //             break;
+    //         case ClientState::CHATTING:
+    //             startChatting(client);
+    //             break;
+    //         case ClientState::LEAVING:
+    //             leaveRoom(client);
+    //             break;
+    //         case ClientState::DISCONNECTED:
+    //             disconnectClient(client);
+    //             break;
+    //         // TODO: DEFAULT 상태일 때(연결이 끊어졌을 때) 동작 추가
+    //         default:
+    //             break;
+    //         }
+    //     }
+    // }
     void handleClient(Client client)
     {
-        // bool stop = false;
+        ClientHandler handler;
+        ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
+
         while (server_state_ == ServerState::RUNNING)
         {
-            const ClientState client_state = client.state;
-            if (client_state == ClientState::DEFAULT)
-            {
-                break;
-            }
+            const ClientState newState = handler.onClientTrigger(client, room_manager_, trigger);
 
-            switch (client_state)
-            {
-            case ClientState::CONNECTED:
-                sendRoomLists(client);
-                break;
-            case ClientState::ROOM_LIST_SENT:
-                recvSelectedRoom(client);
-                break;
-            case ClientState::ROOM_SELECTED:
-                joinRoom(client);
-                break;
-            case ClientState::CREATING_ROOM:
-                createNewRoom(client);
-                break;
-            case ClientState::REMOVING_ROOM:
-                removeRoom(client);
-                break;
-            case ClientState::CHATTING:
-                startChatting(client);
-                break;
-            case ClientState::LEAVING:
-                leaveRoom(client);
-                break;
-            case ClientState::DISCONNECTED:
-                disconnectClient(client);
-                break;
-            // TODO: DEFAULT 상태일 때(연결이 끊어졌을 때) 동작 추가
-            default:
-                break;
-            }
+            client.state = newState;
+
+            trigger = ClientTrigger::SEND_ROOMS;
         }
     }
 
