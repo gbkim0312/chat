@@ -11,15 +11,18 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-class ChatClient
+namespace network
 {
-public:
-    ChatClient(const std::string &server_ip, int port, const std::string &username);
-    ~ChatClient();
-    bool connectToServer();
-    void start();
+    class ChatClient
+    {
+    public:
+        ChatClient(const std::string &server_ip, int port, const std::string &username);
+        ~ChatClient();
+        bool connectToServer();
+        void start();
 
-private:
-    class ChatClientImpl;
-    std::unique_ptr<ChatClientImpl> pimpl_;
-};
+    private:
+        class ChatClientImpl;
+        std::unique_ptr<ChatClientImpl> pimpl_;
+    };
+}

@@ -5,7 +5,6 @@
 #include <string>
 #include <mutex>
 
-// TODO: enum Class MessageType 정의 후, broadcastMessage
 namespace network
 {
 

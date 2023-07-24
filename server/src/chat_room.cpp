@@ -11,7 +11,6 @@
 namespace
 {
     //    using namespace network;
-
     std::string buildMessageStringByType(const std::string &sender_name, const std::string &message, const network::MessageType &type)
     {
         std::string text;
@@ -27,7 +26,6 @@ namespace
             text = fmt::format("{}", message);
             break;
         }
-
         return text;
     }
 }

@@ -47,9 +47,9 @@ namespace
         return (owner.socket == client.socket && owner.username == client.username);
     }
 }
+
 namespace network
 {
-
     ClientHandler::ClientHandler(ClientTrigger initial_trigger, ChatRoomManager &room_manager, Client &client) : trigger_(initial_trigger), room_manager_(room_manager), client_(client){};
 
     ClientState ClientHandler::onClientTrigger()
@@ -302,10 +302,8 @@ namespace network
                 const int index = std::stoi(opt);
                 auto selected_room = room_manager_.findRoomByIndex(index);
 
-                // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능, 현재는 Socket으로 구현)
                 if (isOwner(selected_room.getOwner(), client_))
                 {
-                    // selected_room.broadcastMessage("Room Closed", client, MessageType::NOTICE);
                     selected_room.broadcastMessage("LEAVE", client_, MessageType::COMMAND);
                     room_manager_.removeRoom(index);
                     sendMessageToClient(client_.socket, "Room removed.\n\n");
