@@ -1,38 +1,15 @@
 #include "client_handler.hpp"
-#include <sys/socket.h>
 #include <functional>
 #include <map>
 #include <string>
 #include <fmt/core.h>
 #include <stdexcept>
 #include <exception>
-#include <array>
 #include "client.hpp"
 #include "chat_room_manager.hpp"
 #include <algorithm>
 #include "chat_room.hpp"
-namespace
-{
-    constexpr int BUFFER_SIZE = 1024;
-
-}
-
-namespace network
-{
-    std::string recvMessageFromClient(int client_socket)
-    {
-        std::array<char, BUFFER_SIZE> buffer = {0};
-        auto bytes_received = recv(client_socket, buffer.data(), BUFFER_SIZE, 0);
-        const std::string message = std::string(buffer.data(), bytes_received);
-
-        return message;
-    }
-    bool sendMessageToClient(int socket, const std::string &message)
-    {
-        auto sendBytes = send(socket, message.c_str(), message.size(), 0);
-        return (sendBytes > 0);
-    }
-}
+#include "network_utility.hpp"
 
 ClientHandler::ClientHandler(ClientTrigger initial_trigger) : trigger_(initial_trigger){};
 
@@ -73,6 +50,17 @@ ClientState ClientHandler::onClientTrigger(Client &client, ChatRoomManager &room
                                          return leaveRoom(client, room_manager);
                                      }},
                                 }},
+        {ClientState::DISCONNECTED, {{
+                                        {ClientTrigger::LEAVE, [this](Client &client, ChatRoomManager &room_manager)
+                                         {
+                                             return leaveRoom(client, room_manager);
+                                         }},
+                                        {ClientTrigger::DISCONNECT, [this](Client &client, ChatRoomManager &room_manager)
+                                         {
+                                             return disconnectClient(client, room_manager);
+                                         }},
+                                    }}},
+
     };
 
     // Find the appropriate function in the state transition map based on the client's state and trigger
@@ -293,7 +281,7 @@ ClientState ClientHandler::removeRoom(Client &client, ChatRoomManager &room_mana
 
             // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능)
             // Socket으로 대체해도 될까? -> 문제가 있을듯
-            // 방을 생성한 사람만 지울 수 있도록
+            // 방의 owner와 현재 클라이언트를 비교한 뒤, 같은 경우 삭제.
             if (selected_room.getOwner().socket == client.socket)
             {
                 selected_room.broadcastMessage("Room Closed", client, true);
@@ -339,4 +327,19 @@ ClientState ClientHandler::leaveRoom(Client &client, ChatRoomManager &room_manag
     client.room_index = -1;
     trigger_ = ClientTrigger::SEND_ROOMS;
     return ClientState::CONNECTED;
+}
+
+ClientState ClientHandler::disconnectClient(Client &client, ChatRoomManager &room_manager)
+{
+    if (client.room_index > -1)
+    {
+        auto selectedRoom = room_manager.findRoomByIndex(client.room_index);
+        selectedRoom.removeClient(client);
+        trigger_ = ClientTrigger::LEAVE;
+        return ClientState::DISCONNECTED;
+    }
+
+    // fmt::print("Client {} is disconnected\n", client.username);
+    return ClientState::DEFAULT;
+    // Socket 관리는 외부에서
 }

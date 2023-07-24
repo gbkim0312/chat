@@ -20,4 +20,5 @@ private:
     ClientState createNewRoom(Client &client, ChatRoomManager &room_manager);
     ClientState removeRoom(Client &client, ChatRoomManager &room_manager);
     ClientState leaveRoom(Client &client, ChatRoomManager &room_manager);
+    ClientState disconnectClient(Client &client, ChatRoomManager &room_manager);
 };

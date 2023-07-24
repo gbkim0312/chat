@@ -1,12 +1,11 @@
 #include "chat_server.hpp"
 #include "client.hpp"
-#include "chat_room.hpp"
 #include "chat_room_manager.hpp"
+#include "network_utility.hpp"
 #include <fmt/core.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <array>
 #include <string>
 #include <utility>
 #include <mutex>
@@ -14,15 +13,34 @@
 #include <set>
 #include <vector>
 #include <memory>
-// #include <algorithm>
-// #include <exception>
-#include <stdexcept>
 #include <sys/_endian.h> //htons
 #include <client_handler.hpp>
 
 namespace
 {
-    constexpr int BUFFER_SIZE = 1024;
+
+    std::string getClientUserName(int client_socket)
+    {
+        std::string username = network::recvMessageFromClient(client_socket);
+        if (username.empty())
+        {
+            fmt::print("Failed to receive message");
+        }
+        username.erase(0, username.find_first_not_of(" \t\r\n"));
+        username.erase(username.find_last_not_of(" \t\r\n") + 1);
+
+        return username;
+    }
+
+    Client createClient(int client_socket, const std::string &username)
+    {
+        Client client;
+        client.socket = client_socket;
+        client.state = ClientState::CONNECTED;
+        client.username = username;
+        return client;
+    }
+
 };
 
 class ChatServer::ChatServerImpl
@@ -86,7 +104,7 @@ private:
         server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
         if (server_socket_ < 0)
         {
-            handleError("Fail to create the server socket");
+            fmt::println("Fail to create the server socket");
             server_state_ = ServerState::ERROR;
         };
 
@@ -98,23 +116,23 @@ private:
         // binding the socket and the address
         if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
-            handleError("Failed to bind socket");
+            fmt::println("Failed to bind socket");
             server_state_ = ServerState::ERROR;
         }
 
         // listen clients
         if (listen(server_socket_, 1) == -1)
         {
-            handleError("Fail to listen for connection");
+            fmt::println("Fail to listen for connection");
             server_state_ = ServerState::ERROR;
         }
 
         if (server_state_ == ServerState::RUNNING)
         {
-            fmt::print("Server started. Listening on port {}\n", port_);
+            fmt::println("Server started. Listening on port {}", port_);
         }
 
-        room_manager_.createDefaultRooms(3);
+        // room_manager_.createDefaultRooms(3);
     }
 
     void handleClient(Client client)
@@ -123,46 +141,15 @@ private:
         const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
         ClientHandler handler(trigger);
 
-        while (server_state_ == ServerState::RUNNING)
+        while (server_state_ == ServerState::RUNNING || client.state != ClientState::DEFAULT)
         {
             const ClientState newState = handler.onClientTrigger(client, room_manager_);
 
             client.state = newState;
         }
-    }
-
-    void leaveRoom(Client &client)
-    {
-        try
-        {
-            auto &selected_room = room_manager_.findRoomByIndex(client.room_index);
-            const std::string disconnectMessage = client.username + " has left the chat.";
-            selected_room.broadcastMessage(disconnectMessage, client, true);
-            selected_room.removeClient(client);
-        }
-        // 방이 삭제되어서 leaveRoom 함수 호출하는 경우
-        catch (std::runtime_error &e)
-        {
-        }
-        client.room_index = -1;
-        client.state = ClientState::CONNECTED;
-    }
-
-    void disconnectClient(Client &client)
-    {
-        if (client.room_index > -1)
-        {
-            leaveRoom(client);
-        }
-        close(client.socket);
         client_sockets_.erase(client.socket);
-        client.state = ClientState::DEFAULT;
-        fmt::print("Client {} is disconnected\n", client.username);
-    }
-
-    static void handleError(const std::string &error_message)
-    {
-        fmt::print("runtime error: {}\n", error_message);
+        close(client.socket);
+        fmt::print("client {} (socket: {}) disconnected", client.username, client.socket);
     }
 
     void joinAllClientThread()
@@ -186,52 +173,14 @@ private:
         client_sockets_.clear();
     }
 
-    static std::string getClientUserName(int client_socket)
-    {
-        std::string username = recvMessageFromClient(client_socket);
-        if (username.empty())
-        {
-            handleError("Failed to receive message");
-        }
-        username.erase(0, username.find_first_not_of(" \t\r\n"));
-        username.erase(username.find_last_not_of(" \t\r\n") + 1);
-
-        return username;
-    }
-
-    static Client createClient(int client_socket, const std::string &username)
-    {
-        Client client;
-        // client.id = ++client_id_;
-        client.socket = client_socket;
-        client.state = ClientState::CONNECTED;
-        client.username = username;
-        return client;
-    }
-
-    static bool sendMessageToClient(int socket, const std::string &message)
-    {
-        auto sendBytes = send(socket, message.c_str(), message.size(), 0);
-        return (sendBytes > 0);
-    }
-
     int acceptClient() const
     {
         const int client_socket = accept(server_socket_, nullptr, nullptr);
         if (client_socket < 0)
         {
-            handleError("Failed to accept client connection");
+            fmt::print("Failed to accept client connection");
         }
         return client_socket;
-    }
-
-    static std::string recvMessageFromClient(int client_socket)
-    {
-        std::array<char, BUFFER_SIZE> buffer = {0};
-        auto bytes_received = recv(client_socket, buffer.data(), BUFFER_SIZE, 0);
-        const std::string message = std::string(buffer.data(), bytes_received);
-
-        return message;
     }
 
     sockaddr_in server_addr_{};

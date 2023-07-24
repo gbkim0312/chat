@@ -2,14 +2,13 @@
 #include <string>
 #include <utility>
 #include "client.hpp"
-#include <sys/socket.h>
 #include <fmt/core.h>
 #include <algorithm>
 #include <utility>
 #include <vector>
+#include "network_utility.hpp"
 
 // state변경할 때 어떤 state에서 변경되었는지를
-
 ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
 
 void ChatRoom::addClient(Client client)
@@ -40,12 +39,7 @@ void ChatRoom::broadcastMessage(const std::string &message, const Client &sender
     {
         if (client.socket != sender.socket)
         {
-            auto send_bytes = send(client.socket, text.c_str(), text.size(), 0);
-            // fmt::print("send message to {}\n", client.username);
-            if (send_bytes < 0)
-            {
-                fmt::print("Failed to send message to clients");
-            }
+            network::sendMessageToClient(client.socket, text);
         }
     }
 }
@@ -66,8 +60,9 @@ bool ChatRoom::sendParticipantsList(int client_socket)
         }
     }
 
-    auto send_bytes = send(client_socket, client_list_str.c_str(), client_list_str.size(), 0);
-    return (send_bytes > 0);
+    // auto send_bytes = send(client_socket, client_list_str.c_str(), client_list_str.size(), 0);
+    // return (send_bytes > 0);
+    return network::sendMessageToClient(client_socket, client_list_str);
 }
 
 void ChatRoom::setIndex(int index)
