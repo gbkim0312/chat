@@ -34,12 +34,6 @@
 
     $ cd {PROJECT_DIR}/build/client
 
-    $ ./client {SERVER_IP} {PORT}
-
-
-## TODO
-
-  * Add client id and nickname
-
+    $ ./client {USERNAME} {SERVER_IP} {PORT}
 
 

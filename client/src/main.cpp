@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) // 어디서 예외를 던지는지?
         int32_t port = std::stoi(argv[3]);    // NOLINT
         uint8_t error_count = 0;
 
-        ChatClient client(server_ip, port, username);
+        network::ChatClient client(server_ip, port, username);
 
         while (!client.connectToServer())
         {
