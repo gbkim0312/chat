@@ -8,7 +8,6 @@
 #include <vector>
 #include "network_utility.hpp"
 
-// state변경할 때 어떤 state에서 변경되었는지를
 ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
 
 void ChatRoom::addClient(Client client)
@@ -60,8 +59,6 @@ bool ChatRoom::sendParticipantsList(int client_socket)
         }
     }
 
-    // auto send_bytes = send(client_socket, client_list_str.c_str(), client_list_str.size(), 0);
-    // return (send_bytes > 0);
     return network::sendMessageToClient(client_socket, client_list_str);
 }
 

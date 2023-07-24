@@ -11,7 +11,6 @@ enum class ClientState
     OPTION_SENT,
     OTPION_SELECTED,
     CHATTING,
-    LEAVING,
     DISCONNECTED,
     DEFAULT
 };

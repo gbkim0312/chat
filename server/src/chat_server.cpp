@@ -53,7 +53,6 @@ public:
         server_state_ = ServerState::RUNNING;
 
         configServer();
-        admin_.username = "ADMIN";
 
         while (server_state_ == ServerState::RUNNING)
         {
@@ -132,7 +131,7 @@ private:
             fmt::println("Server started. Listening on port {}", port_);
         }
 
-        // room_manager_.createDefaultRooms(3);
+        room_manager_.createDefaultRooms(3);
     }
 
     void handleClient(Client client)
@@ -141,15 +140,15 @@ private:
         const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
         ClientHandler handler(trigger);
 
-        while (server_state_ == ServerState::RUNNING || client.state != ClientState::DEFAULT)
+        while (server_state_ == ServerState::RUNNING && client.state != ClientState::DEFAULT)
         {
             const ClientState newState = handler.onClientTrigger(client, room_manager_);
-
             client.state = newState;
         }
+
         client_sockets_.erase(client.socket);
         close(client.socket);
-        fmt::print("client {} (socket: {}) disconnected", client.username, client.socket);
+        fmt::println("client {} (socket: {}) disconnected", client.username, client.socket);
     }
 
     void joinAllClientThread()
@@ -193,7 +192,6 @@ private:
     std::vector<std::thread> client_threads_;
     int client_id_ = 0;
     ChatRoomManager room_manager_;
-    Client admin_;
 };
 
 ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}

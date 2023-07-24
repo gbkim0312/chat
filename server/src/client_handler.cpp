@@ -10,13 +10,49 @@
 #include <algorithm>
 #include "chat_room.hpp"
 #include "network_utility.hpp"
+#include <cctype>
+#include <vector>
+
+namespace
+{
+    std::string parseOption(const std::string &option)
+    {
+        std::string opt = option;
+        std::transform(opt.begin(), opt.end(), opt.begin(), [](unsigned char c)
+                       { return std::tolower(c); });
+
+        opt.erase(0, opt.find_first_not_of(" \t\r\n"));
+        opt.erase(opt.find_last_not_of(" \t\r\n") + 1);
+        return opt;
+    }
+
+    std::string buildRoomListString(std::vector<ChatRoom> &rooms)
+    {
+        // sort rooms by index (ascending)
+        std::sort(rooms.begin(), rooms.end(), [](const ChatRoom &r1, const ChatRoom &r2)
+                  { return r1.getIndex() < r2.getIndex(); });
+
+        // build string
+        std::string room_lists_string = "Choose Room from the following List\n(/create to create new room)\n\n";
+        for (const auto &room : rooms)
+        {
+            room_lists_string += fmt::format("{} | {}\n", room.getIndex(), room.getName());
+        }
+        return room_lists_string;
+    }
+
+    // owner의 socket과 client의 socket, owner의 username과 client의 username이 같은 경우 true
+    bool isOwner(const Client &owner, const Client &client)
+    {
+        return (owner.socket == client.socket && owner.username == client.username);
+    }
+}
 
 ClientHandler::ClientHandler(ClientTrigger initial_trigger) : trigger_(initial_trigger){};
 
 ClientState ClientHandler::onClientTrigger(Client &client, ChatRoomManager &room_manager)
 {
     // Define state transition map
-    // map<ClientState, map<ClientTrigger, some_function>>
     std::map<ClientState, std::map<ClientTrigger, std::function<ClientState(Client & client, ChatRoomManager & room_manager)>>> state_transition_map = {
         {ClientState::CONNECTED, {{ClientTrigger::SEND_ROOMS, [this](Client &client, ChatRoomManager &room_manager)
                                    {
@@ -51,10 +87,6 @@ ClientState ClientHandler::onClientTrigger(Client &client, ChatRoomManager &room
                                      }},
                                 }},
         {ClientState::DISCONNECTED, {{
-                                        {ClientTrigger::LEAVE, [this](Client &client, ChatRoomManager &room_manager)
-                                         {
-                                             return leaveRoom(client, room_manager);
-                                         }},
                                         {ClientTrigger::DISCONNECT, [this](Client &client, ChatRoomManager &room_manager)
                                          {
                                              return disconnectClient(client, room_manager);
@@ -67,7 +99,7 @@ ClientState ClientHandler::onClientTrigger(Client &client, ChatRoomManager &room
     auto it = state_transition_map.find(client.state);
     if (it != state_transition_map.end())
     {
-        fmt::print("State found: {}\n", static_cast<int>(client.state));
+        // fmt::print("State found: {}\n", static_cast<int>(client.state));
         auto &trigger_map = it->second;
         auto function_it = trigger_map.find(trigger_);
         if (function_it != trigger_map.end())
@@ -77,7 +109,7 @@ ClientState ClientHandler::onClientTrigger(Client &client, ChatRoomManager &room
         }
         else
         {
-            fmt::print("Cannot find trigger: {}\n", static_cast<int>(trigger_));
+            fmt::println("[ERROR] Cannot find trigger: {} in state: {}", static_cast<int>(trigger_), static_cast<int>(client.state));
         }
     }
     // If no appropriate state transition is found, return DEFAULT state
@@ -90,46 +122,39 @@ ClientState ClientHandler::sendOption(Client &client, ChatRoomManager &room_mana
     // Send room list to client
     auto rooms = room_manager.getRooms();
 
+    // TODO: Trigger로 처리
     if (rooms.empty())
     {
         network::sendMessageToClient(client.socket, "No rooms. do you want to create new room? (y|n)");
-        const std::string message = network::recvMessageFromClient(client.socket);
-        if (message.empty())
+        const std::string opt = parseOption(network::recvMessageFromClient(client.socket));
+        if (opt.empty())
         {
-            this->trigger_ = ClientTrigger::DISCONNECT;
+            trigger_ = ClientTrigger::DISCONNECT;
             return ClientState::DISCONNECTED;
         }
-        else if (message == "y" || message == "Y")
+        else if (opt == "y")
         {
-            this->trigger_ = ClientTrigger::CREATE_ROOM;
+            trigger_ = ClientTrigger::CREATE_ROOM;
             return ClientState::OTPION_SELECTED;
         }
-        else if (message == "n" || message == "N")
+        else if (opt == "n")
         {
-            this->trigger_ = ClientTrigger::SEND_ROOMS;
+            trigger_ = ClientTrigger::SEND_ROOMS;
             return ClientState::CONNECTED;
         }
         else
         {
             network::sendMessageToClient(client.socket, "Wrong Input.\n");
-            this->trigger_ = ClientTrigger::SEND_ROOMS;
+            trigger_ = ClientTrigger::SEND_ROOMS;
             return ClientState::CONNECTED;
         }
     }
-    // sort rooms by index (ascending)
-    std::sort(rooms.begin(), rooms.end(), [](const ChatRoom &r1, const ChatRoom &r2)
-              { return r1.getIndex() < r2.getIndex(); });
 
-    // build string
-    std::string room_lists_string = "Choose Room from the following List\n(/create to create new room)\n\n";
-    for (const auto &room : rooms)
-    {
-        room_lists_string += fmt::format("{} | {}\n", room.getIndex(), room.getName());
-    }
+    const std::string room_list_string = buildRoomListString(rooms);
 
     // send room lists
-    network::sendMessageToClient(client.socket, room_lists_string);
-    this->trigger_ = ClientTrigger::RECV_OPTION;
+    network::sendMessageToClient(client.socket, room_list_string);
+    trigger_ = ClientTrigger::RECV_OPTION;
 
     return ClientState::OPTION_SENT;
 }
@@ -137,30 +162,29 @@ ClientState ClientHandler::sendOption(Client &client, ChatRoomManager &room_mana
 ClientState ClientHandler::recvOption(Client &client, ChatRoomManager &room_manager)
 {
     auto rooms = room_manager.getRooms();
-    const std::string message = network::recvMessageFromClient(client.socket);
-    if (message.empty())
+    const std::string opt = parseOption(network::recvMessageFromClient(client.socket));
+    if (opt.empty())
     {
         this->trigger_ = ClientTrigger::DISCONNECT;
         return ClientState::DISCONNECTED;
     }
-    // TODO: lower case로 변환 후 소문자만 비교
-    else if (message == "/help" || message == "/h")
+    else if (opt == "/help" || opt == "/h")
     {
         network::sendMessageToClient(client.socket, "command list: /help /create /reload /remove");
         this->trigger_ = ClientTrigger::RECV_OPTION;
         return ClientState::OPTION_SENT;
     }
-    else if (message == "/create")
+    else if (opt == "/create" || opt == "/c")
     {
         this->trigger_ = ClientTrigger::CREATE_ROOM;
         return ClientState::OTPION_SELECTED;
     }
-    else if (message == "/reload")
+    else if (opt == "/reload" || opt == "/r")
     {
         this->trigger_ = ClientTrigger::SEND_ROOMS;
         return ClientState::CONNECTED;
     }
-    else if (message == "/remove" || message == "/rm")
+    else if (opt == "/remove" || opt == "/rm")
     {
         this->trigger_ = ClientTrigger::REMOVE_ROOM;
         return ClientState::OTPION_SELECTED;
@@ -169,7 +193,7 @@ ClientState ClientHandler::recvOption(Client &client, ChatRoomManager &room_mana
     {
         try
         {
-            client.room_index = std::stoi(message);
+            client.room_index = std::stoi(opt);
         }
         catch (std::invalid_argument &e)
         {
@@ -206,7 +230,6 @@ ClientState ClientHandler::joinRoom(Client &client, ChatRoomManager &room_manage
 ClientState ClientHandler::startChatting(Client &client, ChatRoomManager &room_manager)
 {
 
-    // TODO: 예외처리 추가 필요?
     auto &selected_room = room_manager.findRoomByIndex(client.room_index);
     const std::string enter_message = fmt::format("{} has joined the room", client.username);
     selected_room.broadcastMessage(enter_message, client, true);
@@ -214,7 +237,7 @@ ClientState ClientHandler::startChatting(Client &client, ChatRoomManager &room_m
     while (client.state == ClientState::CHATTING)
     {
         // receive message from the client
-        const std::string message = network::recvMessageFromClient(client.socket);
+        const std::string message = parseOption(network::recvMessageFromClient(client.socket));
 
         if (message.empty() || message == "/quit" || message == "/q")
         {
@@ -260,14 +283,14 @@ ClientState ClientHandler::createNewRoom(Client &client, ChatRoomManager &room_m
 ClientState ClientHandler::removeRoom(Client &client, ChatRoomManager &room_manager)
 {
     network::sendMessageToClient(client.socket, "Input room index to remove ('/back' to go back) ");
-    const std::string message = network::recvMessageFromClient(client.socket);
+    const std::string opt = parseOption(network::recvMessageFromClient(client.socket));
 
-    if (message.empty())
+    if (opt.empty())
     {
         trigger_ = ClientTrigger::DISCONNECT;
         return ClientState::DISCONNECTED;
     }
-    else if (message == "/back" || message == "/b")
+    else if (opt == "/back" || opt == "/b")
     {
         trigger_ = ClientTrigger::SEND_ROOMS;
         return ClientState::CONNECTED;
@@ -276,13 +299,11 @@ ClientState ClientHandler::removeRoom(Client &client, ChatRoomManager &room_mana
     {
         try
         {
-            const int index = std::stoi(message);
+            const int index = std::stoi(opt);
             auto selected_room = room_manager.findRoomByIndex(index);
 
-            // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능)
-            // Socket으로 대체해도 될까? -> 문제가 있을듯
-            // 방의 owner와 현재 클라이언트를 비교한 뒤, 같은 경우 삭제.
-            if (selected_room.getOwner().socket == client.socket)
+            // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능, 현재는 Socket으로 구현)
+            if (isOwner(selected_room.getOwner(), client))
             {
                 selected_room.broadcastMessage("Room Closed", client, true);
                 room_manager.removeRoom(index);
@@ -307,7 +328,7 @@ ClientState ClientHandler::removeRoom(Client &client, ChatRoomManager &room_mana
         {
             network::sendMessageToClient(client.socket, "Room not found. choose again\n\n");
             trigger_ = ClientTrigger::REMOVE_ROOM;
-            return ClientState::OPTION_SENT;
+            return ClientState::OTPION_SELECTED;
         }
     }
 }
@@ -323,6 +344,7 @@ ClientState ClientHandler::leaveRoom(Client &client, ChatRoomManager &room_manag
     }
     catch (std::runtime_error &e)
     {
+        network::sendMessageToClient(client.socket, "Leaving the room.");
     }
     client.room_index = -1;
     trigger_ = ClientTrigger::SEND_ROOMS;
@@ -336,10 +358,8 @@ ClientState ClientHandler::disconnectClient(Client &client, ChatRoomManager &roo
         auto selectedRoom = room_manager.findRoomByIndex(client.room_index);
         selectedRoom.removeClient(client);
         trigger_ = ClientTrigger::LEAVE;
-        return ClientState::DISCONNECTED;
+        return ClientState::CHATTING;
     }
 
-    // fmt::print("Client {} is disconnected\n", client.username);
     return ClientState::DEFAULT;
-    // Socket 관리는 외부에서
 }
