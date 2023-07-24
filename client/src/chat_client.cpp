@@ -68,42 +68,27 @@ private:
 
     void recvMessages() const
     {
-        std::array<char, 1024> buffer = {0};
 
         while (is_running_)
         {
+            std::array<char, 1024> buffer = {0};
             auto bytes_recv = recv(server_socket_, buffer.data(), 1024, 0);
             const std::string message = std::string(buffer.data(), bytes_recv);
-
-            // if (bytes_recv == -1)
-            // {
-            //     handleError("Fail to receive message from the server");
-            //     break;
-            // }
-            // else if (bytes_recv == 0)
-            // {
-            //     handleError("Disconnected from the server");
-            //     break;
-            // }
-            // else
-            // {
-            //     fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
-            // }
 
             if (message.empty())
             {
                 handleError("Disconnected from the server");
                 break;
             }
-            else if (message == "[NOTICE] : Room Closed")
+            else if (message == "LEAVE")
             {
-                fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
+                fmt::println("Rom Closed");
                 const std::string message = "/back";
                 send(server_socket_, message.c_str(), message.size(), 0);
             }
             else
             {
-                fmt::print("{}\n", std::string(buffer.data(), bytes_recv));
+                fmt::println("{}", std::string(buffer.data(), bytes_recv));
             }
         }
     }

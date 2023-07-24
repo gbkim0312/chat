@@ -4,6 +4,15 @@
 #include <vector>
 #include <string>
 #include <mutex>
+
+// TODO: enum Class MessageType 정의 후, broadcastMessage
+enum class MessageType
+{
+    NORMAL,
+    NOTICE,
+    COMMAND
+};
+
 class ChatRoom
 {
 public:
@@ -11,7 +20,7 @@ public:
 
     void addClient(Client client);
     void removeClient(const Client &client);
-    void broadcastMessage(const std::string &message, const Client &sender, bool is_notice = false);
+    void broadcastMessage(const std::string &message, const Client &sender, MessageType type = MessageType::NORMAL);
     bool sendParticipantsList(int client_socket);
 
     std::string getName() const;

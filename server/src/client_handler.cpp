@@ -232,7 +232,7 @@ ClientState ClientHandler::startChatting(Client &client, ChatRoomManager &room_m
 
     auto &selected_room = room_manager.findRoomByIndex(client.room_index);
     const std::string enter_message = fmt::format("{} has joined the room", client.username);
-    selected_room.broadcastMessage(enter_message, client, true);
+    selected_room.broadcastMessage(enter_message, client, MessageType::NOTICE);
 
     while (client.state == ClientState::CHATTING)
     {
@@ -305,9 +305,10 @@ ClientState ClientHandler::removeRoom(Client &client, ChatRoomManager &room_mana
             // TODO: client id 구현 후, id로 지우기 (username으로 하면, username이 같은 경우 문제 발생가능, 현재는 Socket으로 구현)
             if (isOwner(selected_room.getOwner(), client))
             {
-                selected_room.broadcastMessage("Room Closed", client, true);
+                // selected_room.broadcastMessage("Room Closed", client, MessageType::NOTICE);
+                selected_room.broadcastMessage("LEAVE", client, MessageType::COMMAND);
                 room_manager.removeRoom(index);
-                network::sendMessageToClient(client.socket, "Room removed.\n");
+                network::sendMessageToClient(client.socket, "Room removed.\n\n");
                 trigger_ = ClientTrigger::SEND_ROOMS;
                 return ClientState::CONNECTED;
             }
@@ -339,13 +340,13 @@ ClientState ClientHandler::leaveRoom(Client &client, ChatRoomManager &room_manag
     {
         auto &selected_room = room_manager.findRoomByIndex(client.room_index);
         const std::string disconnectMessage = client.username + " has left the chat.";
-        selected_room.broadcastMessage(disconnectMessage, client, true);
+        selected_room.broadcastMessage(disconnectMessage, client, MessageType::NOTICE);
         selected_room.removeClient(client);
     }
     catch (std::runtime_error &e)
     {
-        network::sendMessageToClient(client.socket, "Leaving the room.");
     }
+
     client.room_index = -1;
     trigger_ = ClientTrigger::SEND_ROOMS;
     return ClientState::CONNECTED;
@@ -360,6 +361,5 @@ ClientState ClientHandler::disconnectClient(Client &client, ChatRoomManager &roo
         trigger_ = ClientTrigger::LEAVE;
         return ClientState::CHATTING;
     }
-
     return ClientState::DEFAULT;
 }

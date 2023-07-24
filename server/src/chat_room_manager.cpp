@@ -60,4 +60,6 @@ void ChatRoomManager::createDefaultRooms(int n)
         room_name = fmt::format("Default Room {}", i);
         rooms_.push_back(ChatRoom(room_name, i));
     }
+
+    fmt::println("* {} default rooms are created.", n);
 }

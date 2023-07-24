@@ -18,16 +18,14 @@
 
 namespace
 {
-
     std::string getClientUserName(int client_socket)
     {
         std::string username = network::recvMessageFromClient(client_socket);
         if (username.empty())
         {
-            fmt::print("Failed to receive message");
+            fmt::println("* [ERROR] Failed to receive username");
         }
-        username.erase(0, username.find_first_not_of(" \t\r\n"));
-        username.erase(username.find_last_not_of(" \t\r\n") + 1);
+        utility::removeWhitespaces(username);
 
         return username;
     }
@@ -57,11 +55,11 @@ public:
         while (server_state_ == ServerState::RUNNING)
         {
             // accept clients
-            int client_socket = acceptClient();
+            int client_socket = network::acceptClient(server_socket_);
 
             // get username from the client
             std::string username = getClientUserName(client_socket);
-            fmt::print("Client connected. Socket FD: {} | username: {}\n", client_socket, username);
+            fmt::println("* Client connected. Socket FD: {} | username: {}", client_socket, username);
 
             // insert the client socket to clientSockets.
             client_sockets_.insert(client_socket);
@@ -80,8 +78,8 @@ public:
     void stop()
     {
         server_state_ = ServerState::STOP;
-        joinAllClientThread();
-        closeAllClientSockets();
+        network::joinAllClientThread(client_threads_);
+        network::closeAllClientSockets(client_sockets_, client_mutex_);
         close(server_socket_);
     }
 
@@ -103,7 +101,7 @@ private:
         server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
         if (server_socket_ < 0)
         {
-            fmt::println("Fail to create the server socket");
+            fmt::println("* [ERROR] Fail to create the server socket");
             server_state_ = ServerState::ERROR;
         };
 
@@ -115,28 +113,24 @@ private:
         // binding the socket and the address
         if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
         {
-            fmt::println("Failed to bind socket");
+            fmt::println("* [ERROR] Failed to bind socket");
             server_state_ = ServerState::ERROR;
         }
-
         // listen clients
         if (listen(server_socket_, 1) == -1)
         {
-            fmt::println("Fail to listen for connection");
+            fmt::println("* [ERROR] Fail to listen for connection");
             server_state_ = ServerState::ERROR;
         }
-
         if (server_state_ == ServerState::RUNNING)
         {
-            fmt::println("Server started. Listening on port {}", port_);
+            room_manager_.createDefaultRooms(3);
+            fmt::println("* Server started. Listening on port {}", port_);
         }
-
-        room_manager_.createDefaultRooms(3);
     }
 
     void handleClient(Client client)
     {
-
         const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
         ClientHandler handler(trigger);
 
@@ -148,38 +142,7 @@ private:
 
         client_sockets_.erase(client.socket);
         close(client.socket);
-        fmt::println("client {} (socket: {}) disconnected", client.username, client.socket);
-    }
-
-    void joinAllClientThread()
-    {
-        for (auto &client_thread : client_threads_)
-        {
-            if (client_thread.joinable())
-            {
-                client_thread.join();
-            }
-        }
-    }
-
-    void closeAllClientSockets()
-    {
-        const std::lock_guard<std::mutex> lock_guard(client_mutex_);
-        for (auto client_socket : client_sockets_)
-        {
-            close(client_socket);
-        }
-        client_sockets_.clear();
-    }
-
-    int acceptClient() const
-    {
-        const int client_socket = accept(server_socket_, nullptr, nullptr);
-        if (client_socket < 0)
-        {
-            fmt::print("Failed to accept client connection");
-        }
-        return client_socket;
+        fmt::println("* client {} (socket: {}) disconnected", client.username, client.socket);
     }
 
     sockaddr_in server_addr_{};

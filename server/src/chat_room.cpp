@@ -22,18 +22,23 @@ void ChatRoom::removeClient(const Client &client)
                    clients_.end());
 }
 
-void ChatRoom::broadcastMessage(const std::string &message, const Client &sender, bool is_notice)
+void ChatRoom::broadcastMessage(const std::string &message, const Client &sender, MessageType type)
 {
     std::string text;
 
-    if (is_notice)
+    switch (type)
     {
-        text = fmt::format("[NOTICE] : {}", message);
-    }
-    else
-    {
+    case MessageType::NORMAL:
         text = fmt::format("[{}] : {}", sender.username, message);
+        break;
+    case MessageType::NOTICE:
+        text = fmt::format("[NOTICE] : {}", message);
+        break;
+    case MessageType::COMMAND:
+        text = fmt::format("{}", message);
+        break;
     }
+
     for (const auto &client : clients_)
     {
         if (client.socket != sender.socket)

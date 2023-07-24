@@ -1,6 +1,5 @@
 #include "chat_server.hpp"
 #include <cstdlib>
-// #include <spdlog/fmt/fmt.h>
 #include <fmt/core.h>
 #include <cstdint>
 #include <chrono>
@@ -10,7 +9,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        fmt::print("usage: {} <PORT_NUM>", argv[0]); // NOLINT
+        fmt::println("usage: {} <PORT_NUM>", argv[0]); // NOLINT
         return 0;
     }
 
@@ -29,7 +28,7 @@ int main(int argc, char *argv[])
         if (server_state == ServerState::ERROR)
         {
             ++error_count;
-            fmt::print("Server encountered an error. Restarting... ({} / 10)\n", error_count);
+            fmt::println("* Server encountered an error. Restarting... ({} / 10)", error_count);
             std::this_thread::sleep_for(std::chrono::seconds(6));
             if (error_count > 10)
             {
@@ -45,12 +44,12 @@ int main(int argc, char *argv[])
 
     if (server_state == ServerState::ERROR)
     {
-        fmt::print("Can not start server. try later. \n");
+        fmt::println("* Can not start server. try later. \n");
         chat_server.stop();
     }
     else if (server_state == ServerState::STOP)
     {
-        fmt::print("Server stopped. \n");
+        fmt::println("* Server stopped. \n");
         exit(0);
     }
 
