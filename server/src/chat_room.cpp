@@ -8,91 +8,105 @@
 #include <vector>
 #include "network_utility.hpp"
 
-ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
-
-void ChatRoom::addClient(Client client)
+namespace
 {
-    clients_.push_back(std::move(client));
-}
+    //    using namespace network;
 
-void ChatRoom::removeClient(const Client &client)
-{
-    clients_.erase(std::remove_if(clients_.begin(), clients_.end(), [&client](const Client &c)
-                                  { return c.socket == client.socket; }),
-                   clients_.end());
-}
-
-void ChatRoom::broadcastMessage(const std::string &message, const Client &sender, MessageType type)
-{
-    std::string text;
-
-    switch (type)
+    std::string buildMessageStringByType(const std::string &sender_name, const std::string &message, const network::MessageType &type)
     {
-    case MessageType::NORMAL:
-        text = fmt::format("[{}] : {}", sender.username, message);
-        break;
-    case MessageType::NOTICE:
-        text = fmt::format("[NOTICE] : {}", message);
-        break;
-    case MessageType::COMMAND:
-        text = fmt::format("{}", message);
-        break;
-    }
-
-    for (const auto &client : clients_)
-    {
-        if (client.socket != sender.socket)
+        std::string text;
+        switch (type)
         {
-            network::sendMessageToClient(client.socket, text);
+        case network::MessageType::NORMAL:
+            text = fmt::format("[{}] : {}", sender_name, message);
+            break;
+        case network::MessageType::NOTICE:
+            text = fmt::format("[NOTICE] : {}", message);
+            break;
+        case network::MessageType::COMMAND:
+            text = fmt::format("{}", message);
+            break;
         }
+
+        return text;
     }
 }
-
-bool ChatRoom::sendParticipantsList(int client_socket)
+namespace network
 {
-    std::string client_list_str;
 
-    for (auto client : clients_)
+    ChatRoom::ChatRoom(std::string name, int index) : name_(std::move(name)), index_(index) {}
+
+    void ChatRoom::addClient(Client client)
     {
-        if (client.socket == client_socket)
+        clients_.push_back(std::move(client));
+    }
+
+    void ChatRoom::removeClient(const Client &client)
+    {
+        clients_.erase(std::remove_if(clients_.begin(), clients_.end(), [&client](const Client &c)
+                                      { return c.socket == client.socket; }),
+                       clients_.end());
+    }
+
+    void ChatRoom::broadcastMessage(const std::string &message, const Client &sender, MessageType type)
+    {
+        const std::string text = buildMessageStringByType(sender.username, message, type);
+
+        for (const auto &client : clients_)
         {
-            client_list_str += fmt::format(" - {} (me)\n", client.username);
-        }
-        else
-        {
-            client_list_str += fmt::format(" - {}\n", client.username);
+            if (client.socket != sender.socket)
+            {
+                sendMessageToClient(client.socket, text);
+            }
         }
     }
 
-    return network::sendMessageToClient(client_socket, client_list_str);
-}
+    bool ChatRoom::sendParticipantsList(int client_socket)
+    {
+        std::string client_list_str;
 
-void ChatRoom::setIndex(int index)
-{
-    index_ = index;
-}
+        for (auto client : clients_)
+        {
+            if (client.socket == client_socket)
+            {
+                client_list_str += fmt::format(" - {} (me)\n", client.username);
+            }
+            else
+            {
+                client_list_str += fmt::format(" - {}\n", client.username);
+            }
+        }
 
-std::vector<Client> &ChatRoom::getClients()
-{
-    return clients_;
-}
+        return sendMessageToClient(client_socket, client_list_str);
+    }
 
-std::string ChatRoom::getName() const
-{
-    return name_;
-}
+    void ChatRoom::setIndex(int index)
+    {
+        index_ = index;
+    }
 
-int ChatRoom::getIndex() const
-{
-    return index_;
-}
+    std::vector<Client> &ChatRoom::getClients()
+    {
+        return clients_;
+    }
 
-void ChatRoom::setOwner(Client client)
-{
-    owner_ = std::move(client);
-}
+    std::string ChatRoom::getName() const
+    {
+        return name_;
+    }
 
-Client ChatRoom::getOwner() const
-{
-    return owner_;
+    int ChatRoom::getIndex() const
+    {
+        return index_;
+    }
+
+    void ChatRoom::setOwner(Client client)
+    {
+        owner_ = std::move(client);
+    }
+
+    Client ChatRoom::getOwner() const
+    {
+        return owner_;
+    }
 }

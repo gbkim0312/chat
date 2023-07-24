@@ -25,158 +25,160 @@ namespace
         {
             fmt::println("* [ERROR] Failed to receive username");
         }
-        utility::removeWhitespaces(username);
+        network::removeWhitespaces(username);
 
         return username;
     }
 
-    Client createClient(int client_socket, const std::string &username)
+    network::Client createClient(int client_socket, const std::string &username)
     {
-        Client client;
+        network::Client client;
         client.socket = client_socket;
-        client.state = ClientState::CONNECTED;
+        client.state = network::ClientState::CONNECTED;
         client.username = username;
         return client;
     }
 
 };
-
-class ChatServer::ChatServerImpl
+namespace network
 {
-public:
-    explicit ChatServerImpl(int port) : port_(port) {}
-
-    void start()
+    class ChatServer::ChatServerImpl
     {
-        server_state_ = ServerState::RUNNING;
+    public:
+        explicit ChatServerImpl(int port) : port_(port) {}
 
-        configServer();
-
-        while (server_state_ == ServerState::RUNNING)
+        void start()
         {
-            // accept clients
-            int client_socket = network::acceptClient(server_socket_);
+            server_state_ = ServerState::RUNNING;
 
-            // get username from the client
-            std::string username = getClientUserName(client_socket);
-            fmt::println("* Client connected. Socket FD: {} | username: {}", client_socket, username);
+            configServer();
 
-            // insert the client socket to clientSockets.
-            client_sockets_.insert(client_socket);
+            while (server_state_ == ServerState::RUNNING)
+            {
+                // accept clients
+                int client_socket = acceptClient(server_socket_);
 
-            // create client object
-            Client client = createClient(client_socket, username);
-            client.state = ClientState::CONNECTED;
+                // get username from the client
+                std::string username = getClientUserName(client_socket);
+                fmt::println("* Client connected. Socket FD: {} | username: {}", client_socket, username);
 
-            // start clientHandler thread
-            std::thread client_thread(&ChatServerImpl::handleClient, this, client);
-            client_thread.detach();
-            client_threads_.push_back(std::move(client_thread));
-        }
-    }
+                // insert the client socket to clientSockets.
+                client_sockets_.insert(client_socket);
 
-    void stop()
-    {
-        server_state_ = ServerState::STOP;
-        network::joinAllClientThread(client_threads_);
-        network::closeAllClientSockets(client_sockets_, client_mutex_);
-        close(server_socket_);
-    }
+                // create client object
+                Client client = createClient(client_socket, username);
+                client.state = ClientState::CONNECTED;
 
-    ServerState getState() const
-    {
-        return server_state_;
-    }
-
-    void setPort(int port)
-    {
-        port_ = port;
-    }
-
-private:
-    // create the server socket and bind with address structure
-    void configServer()
-    {
-        // create the server socket
-        server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
-        if (server_socket_ < 0)
-        {
-            fmt::println("* [ERROR] Fail to create the server socket");
-            server_state_ = ServerState::ERROR;
-        };
-
-        // set the address of the socket
-        server_addr_.sin_family = AF_INET;
-        server_addr_.sin_addr.s_addr = INADDR_ANY;
-        server_addr_.sin_port = htons(port_);
-
-        // binding the socket and the address
-        if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
-        {
-            fmt::println("* [ERROR] Failed to bind socket");
-            server_state_ = ServerState::ERROR;
-        }
-        // listen clients
-        if (listen(server_socket_, 1) == -1)
-        {
-            fmt::println("* [ERROR] Fail to listen for connection");
-            server_state_ = ServerState::ERROR;
-        }
-        if (server_state_ == ServerState::RUNNING)
-        {
-            room_manager_.createDefaultRooms(3);
-            fmt::println("* Server started. Listening on port {}", port_);
-        }
-    }
-
-    void handleClient(Client client)
-    {
-        const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
-        ClientHandler handler(trigger);
-
-        while (server_state_ == ServerState::RUNNING && client.state != ClientState::DEFAULT)
-        {
-            const ClientState newState = handler.onClientTrigger(client, room_manager_);
-            client.state = newState;
+                // start clientHandler thread
+                std::thread client_thread(&ChatServerImpl::handleClient, this, client);
+                client_thread.detach();
+                client_threads_.push_back(std::move(client_thread));
+            }
         }
 
-        client_sockets_.erase(client.socket);
-        close(client.socket);
-        fmt::println("* client {} (socket: {}) disconnected", client.username, client.socket);
+        void stop()
+        {
+            server_state_ = ServerState::STOP;
+            joinAllClientThread(client_threads_);
+            closeAllClientSockets(client_sockets_, client_mutex_);
+            close(server_socket_);
+        }
+
+        ServerState getState() const
+        {
+            return server_state_;
+        }
+
+        void setPort(int port)
+        {
+            port_ = port;
+        }
+
+    private:
+        // create the server socket and bind with address structure
+        void configServer()
+        {
+            // create the server socket
+            server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
+            if (server_socket_ < 0)
+            {
+                fmt::println("* [ERROR] Fail to create the server socket");
+                server_state_ = ServerState::ERROR;
+            };
+
+            // set the address of the socket
+            server_addr_.sin_family = AF_INET;
+            server_addr_.sin_addr.s_addr = INADDR_ANY;
+            server_addr_.sin_port = htons(port_);
+
+            // binding the socket and the address
+            if (bind(server_socket_, reinterpret_cast<sockaddr *>(&server_addr_), sizeof(server_addr_)) == -1)
+            {
+                fmt::println("* [ERROR] Failed to bind socket");
+                server_state_ = ServerState::ERROR;
+            }
+            // listen clients
+            if (listen(server_socket_, 1) == -1)
+            {
+                fmt::println("* [ERROR] Fail to listen for connection");
+                server_state_ = ServerState::ERROR;
+            }
+            if (server_state_ == ServerState::RUNNING)
+            {
+                room_manager_.createDefaultRooms(3);
+                fmt::println("* Server started. Listening on port {}", port_);
+            }
+        }
+
+        void handleClient(Client client)
+        {
+            const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
+            ClientHandler handler(trigger, room_manager_, client);
+
+            while (server_state_ == ServerState::RUNNING && client.state != ClientState::DEFAULT)
+            {
+                const ClientState newState = handler.onClientTrigger();
+                client.state = newState;
+            }
+
+            client_sockets_.erase(client.socket);
+            close(client.socket);
+            fmt::println("* client {} (socket: {}) disconnected", client.username, client.socket);
+        }
+
+        sockaddr_in server_addr_{};
+        int port_ = 0;
+        int server_socket_ = 0;
+        std::set<int> client_sockets_;
+        bool is_running_ = false;
+        std::mutex client_mutex_;
+        ServerState server_state_ = ServerState::STOP;
+        std::vector<std::thread> client_threads_;
+        int client_id_ = 0;
+        ChatRoomManager room_manager_;
+    };
+
+    ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
+
+    ChatServer::~ChatServer() = default; // 필수적..?
+
+    void ChatServer::start()
+    {
+        pimpl_->start();
     }
 
-    sockaddr_in server_addr_{};
-    int port_ = 0;
-    int server_socket_ = 0;
-    std::set<int> client_sockets_;
-    bool is_running_ = false;
-    std::mutex client_mutex_;
-    ServerState server_state_ = ServerState::STOP;
-    std::vector<std::thread> client_threads_;
-    int client_id_ = 0;
-    ChatRoomManager room_manager_;
-};
+    ServerState ChatServer::getState()
+    {
+        return pimpl_->getState();
+    }
 
-ChatServer::ChatServer(int port) : pimpl_(std::make_unique<ChatServerImpl>(port)) {}
+    void ChatServer::stop()
+    {
+        pimpl_->stop();
+    }
 
-ChatServer::~ChatServer() = default; // 필수적..?
-
-void ChatServer::start()
-{
-    pimpl_->start();
-}
-
-ServerState ChatServer::getState()
-{
-    return pimpl_->getState();
-}
-
-void ChatServer::stop()
-{
-    pimpl_->stop();
-}
-
-void ChatServer::setPort(int port)
-{
-    pimpl_->setPort(port);
+    void ChatServer::setPort(int port)
+    {
+        pimpl_->setPort(port);
+    }
 }

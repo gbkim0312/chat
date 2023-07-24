@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
     }
 
     int port = std::stoi(argv[1]); // NOLINT
-    ChatServer chat_server(port);
+    network::ChatServer chat_server(port);
 
-    ServerState server_state = ServerState::STOP;
+    network::ServerState server_state = network::ServerState::STOP;
     uint8_t error_count = 0;
 
     while (true)
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         chat_server.start();
         server_state = chat_server.getState();
 
-        if (server_state == ServerState::ERROR)
+        if (server_state == network::ServerState::ERROR)
         {
             ++error_count;
             fmt::println("* Server encountered an error. Restarting... ({} / 10)", error_count);
@@ -36,18 +36,18 @@ int main(int argc, char *argv[])
             }
             continue;
         }
-        else if (server_state == ServerState::STOP)
+        else if (server_state == network::ServerState::STOP)
         {
             break;
         }
     }
 
-    if (server_state == ServerState::ERROR)
+    if (server_state == network::ServerState::ERROR)
     {
         fmt::println("* Can not start server. try later. \n");
         chat_server.stop();
     }
-    else if (server_state == ServerState::STOP)
+    else if (server_state == network::ServerState::STOP)
     {
         fmt::println("* Server stopped. \n");
         exit(0);

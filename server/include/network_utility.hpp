@@ -13,9 +13,5 @@ namespace network
     void joinAllClientThread(std::vector<std::thread> &client_threads);
     void closeAllClientSockets(std::set<int> &client_sockets, std::mutex &client_mutex);
     int acceptClient(int server_socket);
-}
-
-namespace utility
-{
     void removeWhitespaces(std::string &text);
 }

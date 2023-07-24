@@ -55,13 +55,11 @@ namespace network
         }
         return client_socket;
     }
-}
 
-namespace utility
-{
     void removeWhitespaces(std::string &text)
     {
         text.erase(0, text.find_first_not_of(" \t\r\n"));
         text.erase(text.find_last_not_of(" \t\r\n") + 1);
     }
+
 }

@@ -3,25 +3,29 @@
 #include <string>
 #include "client.hpp"
 
-enum class ServerState
+namespace network
 {
-    RUNNING,
-    ERROR,
-    STOP
-};
 
-class ChatServer
-{
-public:
-    ChatServer(int port);
-    ~ChatServer();
+    enum class ServerState
+    {
+        RUNNING,
+        ERROR,
+        STOP
+    };
 
-    void start();
-    ServerState getState();
-    void stop();
-    void setPort(int port);
+    class ChatServer
+    {
+    public:
+        ChatServer(int port);
+        ~ChatServer();
 
-private:
-    class ChatServerImpl;
-    std::unique_ptr<ChatServerImpl> pimpl_;
-};
+        void start();
+        ServerState getState();
+        void stop();
+        void setPort(int port);
+
+    private:
+        class ChatServerImpl;
+        std::unique_ptr<ChatServerImpl> pimpl_;
+    };
+}

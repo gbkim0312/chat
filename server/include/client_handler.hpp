@@ -4,21 +4,25 @@
 #include "chat_room.hpp"
 #include <functional>
 
-class ClientHandler
+namespace network
 {
-public:
-    ClientHandler(ClientTrigger initial_trigger);
-    ClientState onClientTrigger(Client &client, ChatRoomManager &room_manager);
-    void setTrigger(ClientTrigger trigger);
+    class ClientHandler
+    {
+    public:
+        ClientHandler(ClientTrigger initial_trigger, ChatRoomManager &room_manager, Client &client);
+        ClientState onClientTrigger();
 
-private:
-    ClientTrigger trigger_;
-    ClientState sendOption(Client &client, ChatRoomManager &room_manager);
-    ClientState recvOption(Client &client, ChatRoomManager &room_manager);
-    ClientState joinRoom(Client &client, ChatRoomManager &room_manager);
-    ClientState startChatting(Client &client, ChatRoomManager &room_manager);
-    ClientState createNewRoom(Client &client, ChatRoomManager &room_manager);
-    ClientState removeRoom(Client &client, ChatRoomManager &room_manager);
-    ClientState leaveRoom(Client &client, ChatRoomManager &room_manager);
-    ClientState disconnectClient(Client &client, ChatRoomManager &room_manager);
-};
+    private:
+        ClientTrigger trigger_;
+        Client &client_;
+        ChatRoomManager &room_manager_;
+        ClientState sendOption();
+        ClientState recvOption();
+        ClientState joinRoom();
+        ClientState startChatting();
+        ClientState createNewRoom();
+        ClientState removeRoom();
+        ClientState leaveRoom();
+        ClientState disconnectClient();
+    };
+}
