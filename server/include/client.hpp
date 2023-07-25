@@ -20,14 +20,15 @@ namespace network
 
     enum class ClientTrigger
     {
-        SEND_ROOMS,
+        SEND_OPTIONS,
         RECV_OPTION,
         JOIN_ROOM,
         CREATE_ROOM,
         REMOVE_ROOM,
         START_CHAT,
         LEAVE,
-        DISCONNECT
+        DISCONNECT,
+        SHOW_PARITCIPANTS
     };
 
     struct Client
