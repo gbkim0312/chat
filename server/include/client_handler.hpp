@@ -16,13 +16,14 @@ namespace network
         ClientTrigger trigger_;
         Client &client_;
         ChatRoomManager &room_manager_;
-        ClientState sendOption();
-        ClientState recvOption();
+        ClientState sendOptions();
+        ClientState recvSelectedOption();
         ClientState joinRoom();
         ClientState startChatting();
         ClientState createNewRoom();
         ClientState removeRoom();
         ClientState leaveRoom();
         ClientState disconnectClient();
+        ClientState showParticipants();
     };
 }

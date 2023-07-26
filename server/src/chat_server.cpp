@@ -39,7 +39,38 @@ namespace
         return client;
     }
 
+    void joinAllClientThread(std::vector<std::thread> &client_threads)
+    {
+        for (auto &client_thread : client_threads)
+        {
+            if (client_thread.joinable())
+            {
+                client_thread.join();
+            }
+        }
+    }
+
+    void closeAllClientSockets(std::set<int> &client_sockets, std::mutex &client_mutex)
+    {
+        const std::lock_guard<std::mutex> lock_guard(client_mutex);
+        for (auto client_socket : client_sockets)
+        {
+            close(client_socket);
+        }
+        client_sockets.clear();
+    }
+
+    int acceptClient(int server_socket)
+    {
+        const int client_socket = accept(server_socket, nullptr, nullptr);
+        if (client_socket < 0)
+        {
+            fmt::print("Failed to accept client connection");
+        }
+        return client_socket;
+    }
 };
+
 namespace network
 {
     class ChatServer::ChatServerImpl
@@ -57,13 +88,11 @@ namespace network
             {
                 // accept clients
                 int client_socket = acceptClient(server_socket_);
+                client_sockets_.insert(client_socket);
 
                 // get username from the client
                 std::string username = getClientUserName(client_socket);
                 fmt::println("* Client connected. Socket FD: {} | username: {}", client_socket, username);
-
-                // insert the client socket to clientSockets.
-                client_sockets_.insert(client_socket);
 
                 // create client object
                 Client client = createClient(client_socket, username);
@@ -132,13 +161,11 @@ namespace network
 
         void handleClient(Client client)
         {
-            const ClientTrigger trigger = ClientTrigger::SEND_ROOMS; // 초기 트리거 설정
-            ClientHandler handler(trigger, room_manager_, client);
+            ClientHandler handler(ClientTrigger::SEND_OPTIONS, room_manager_, client);
 
             while (server_state_ == ServerState::RUNNING && client.state != ClientState::DEFAULT)
             {
-                const ClientState newState = handler.onClientTrigger();
-                client.state = newState;
+                client.state = handler.onClientTrigger();
             }
 
             client_sockets_.erase(client.socket);
