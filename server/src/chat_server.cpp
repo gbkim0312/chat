@@ -88,13 +88,11 @@ namespace network
             {
                 // accept clients
                 int client_socket = acceptClient(server_socket_);
+                client_sockets_.insert(client_socket);
 
                 // get username from the client
                 std::string username = getClientUserName(client_socket);
                 fmt::println("* Client connected. Socket FD: {} | username: {}", client_socket, username);
-
-                // insert the client socket to clientSockets.
-                client_sockets_.insert(client_socket);
 
                 // create client object
                 Client client = createClient(client_socket, username);

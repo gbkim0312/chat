@@ -44,6 +44,7 @@ namespace
     }
 
     // owner의 socket과 client의 socket, owner의 username과 client의 username이 같은 경우 true
+    // operator overloading operator==&
     bool isOwner(const network::Client &owner, const network::Client &client)
     {
         return (owner.socket == client.socket && owner.username == client.username);
@@ -52,11 +53,13 @@ namespace
 
 namespace network
 {
-    ClientHandler::ClientHandler(ClientTrigger initial_trigger, ChatRoomManager &room_manager, Client &client) : trigger_(initial_trigger), room_manager_(room_manager), client_(client){};
+    ClientHandler::ClientHandler(ClientTrigger initial_trigger, ChatRoomManager &room_manager, Client &client)
+        : trigger_(initial_trigger), room_manager_(room_manager), client_(client){};
 
     ClientState ClientHandler::onClientTrigger()
     {
         // State Transition Map 정의
+        // 함수를 객체로 바로 넣어야함, map을 다른 곳에서 선언, lambda function 내 this 금지
         std::map<ClientState, std::map<ClientTrigger, std::function<ClientState()>>> state_transition_map = {
             {ClientState::CONNECTED, {{ClientTrigger::SEND_OPTIONS, [this]()
                                        { return sendOptions(); }}}},
@@ -119,6 +122,7 @@ namespace network
             }
         }
         // 적절한 상태와 트리거를 찾지 못한 경우
+        // 못찾았을 때를 if로 넣고, (초기 조건 확인하는 경우), 최대한 depth를 얕게 가져가야함
         return ClientState::DEFAULT;
     }
 
@@ -131,6 +135,7 @@ namespace network
         {
             sendMessageToClient(client_.socket, "No rooms. do you want to create new room? (y|n)");
             const std::string opt = normalizeOption(recvMessageFromClient(client_.socket));
+            // 함수로 작성 가능하면 하도록 (depth를 낮출 수 있다.)
             if (opt.empty())
             {
                 trigger_ = ClientTrigger::DISCONNECT;
@@ -166,6 +171,9 @@ namespace network
     {
         auto rooms = room_manager_.getRooms();
         const std::string opt = normalizeOption(recvMessageFromClient(client_.socket));
+
+        // 3개 이상일 경우 Switch 사용. Mapping
+        // enum class로 바꿔서
         if (opt.empty())
         {
             trigger_ = ClientTrigger::DISCONNECT;
@@ -266,10 +274,12 @@ namespace network
             }
             else
             {
+                // message는 normalize하면 안됨;
                 selected_room.broadcastMessage(message, client_);
             }
         }
         return ClientState::DEFAULT;
+        // std::message
     }
 
     // 방 생성

@@ -5,9 +5,7 @@
 
 namespace network
 {
-
-    class ChatRoomManager;
-
+    // class ChatRoomManager;
     enum class ClientState
     {
         CONNECTED,
@@ -37,6 +35,6 @@ namespace network
         int socket = -1;
         ClientState state = ClientState::DEFAULT;
         std::string username = "";
-        int room_index = -1; // 참여중인 방 index // TODO: 방 삭제 시 인덱스 변하는 문제 있을수도..?
+        int room_index = -1; // 참여중인 방 index
     };
 }
